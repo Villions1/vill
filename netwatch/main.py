@@ -10,14 +10,22 @@ import os
 import signal
 from typing import Optional
 
+# Use system Python for PyGObject compatibility
+if '/usr/local/bin' in sys.executable:
+    # Try to use system python3 if available
+    system_python = '/usr/bin/python3'
+    if os.path.exists(system_python):
+        os.execv(system_python, [system_python] + sys.argv)
+
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
+gi.require_version('Gio', '2.0')
 
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Gtk, Adw, GLib, Gio
 
 from netwatch.core.packet_capture import PacketCapture
 from netwatch.core.process_monitor import ProcessMonitor
