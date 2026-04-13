@@ -1,0 +1,5 @@
+pygobject>=3.44.0
+scapy>=2.5.0
+psutil>=5.9.0
+aiohttp>=3.8.0
+asyncio>=3.4.3
