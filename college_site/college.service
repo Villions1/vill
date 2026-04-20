@@ -1,0 +1,12 @@
+[Unit]
+Description=College Website Gunicorn instance
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/workspace/college_site
+ExecStart=/usr/local/bin/gunicorn --workers 3 --bind unix:/workspace/college_site/college.sock app.main:app
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Авторитеты колледжа{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏆 Авторитеты колледжа</h1>
+    <p>Иерархия уважаемых членов нашего сообщества</p>
+</div>
+
+<div class="authorities-list">
+    {% if users %}
+        {% for user in users %}
+            <div class="authority-card rank-{{ user.rank }}">
+                <div class="rank-badge">
+                    {% if user.rank >= 10 %}
+                        <span class="rank-icon">👑</span>
+                        <span class="rank-title">Легенда</span>
+                    {% elif user.rank >= 7 %}
+                        <span class="rank-icon">⭐</span>
+                        <span class="rank-title">Элита</span>
+                    {% elif user.rank >= 5 %}
+                        <span class="rank-icon">🎖️</span>
+                        <span class="rank-title">Ветеран</span>
+                    {% elif user.rank >= 3 %}
+                        <span class="rank-icon">📚</span>
+                        <span class="rank-title">Наставник</span>
+                    {% else %}
+                        <span class="rank-icon">🌟</span>
+                        <span class="rank-title">Активный</span>
+                    {% endif %}
+                </div>
+                <div class="authority-info">
+                    <h3>{{ user.username }}</h3>
+                    <p class="rank-number">Ранг: {{ user.rank }}</p>
+                    <p class="member-since">В сообществе с {{ user.created_at.strftime('%d.%m.%Y') }}</p>
+                    {% if user.is_admin %}
+                        <span class="admin-badge">🛡️ Администратор</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="no-authorities">
+            <p>Пока нет авторитетов. Станьте первым!</p>
+        </div>
+    {% endif %}
+</div>
+
+<div class="rank-info">
+    <h2>ℹ️ О системе рангов</h2>
+    <ul>
+        <li><strong>1-2:</strong> Активный участник</li>
+        <li><strong>3-4:</strong> Наставник</li>
+        <li><strong>5-6:</strong> Ветеран</li>
+        <li><strong>7-9:</strong> Элита</li>
+        <li><strong>10+:</strong> Легенда</li>
+    </ul>
+    <p>Ранги устанавливаются администрацией за вклад в жизнь колледжа.</p>
+</div>
+{% endblock %}
