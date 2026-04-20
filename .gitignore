@@ -1,19 +1,4 @@
 ```
-# Database files
-*.db
-
-# Environment files
-.env
-.env.local
-*.env.*
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.swp
-
 # Python
 __pycache__/
 *.pyc
@@ -23,15 +8,85 @@ __pycache__/
 env/
 venv/
 .venv/
+.ENV
+.ENV.*
+.python-version
 pip-log.txt
 pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
+
+# Dependencies
+requirements.txt.bak
+
+# Logs
 *.log
+
+# Environment variables
+.env
+.env.local
+.env.*
+
+# Coverage reports
+.coverage
+coverage/
+htmlcov/
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
+
+# Build artifacts
+build/
+dist/
+*.egg
+*.egg-info/
+*.so
+*.whl
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Nginx
+nginx.conf.bak
+
+# System
+*.out
+*.pid
+*.seed
+*.id
+*.pdb
+*.cache
+*.db
+*.db-journal
+*.lock
+*.socket
+*.sock
+*.pid
+*.state
+*.dump
+*.core
+*.stackdump
+*.crash
+*.log.*
+!*.svg
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.tbz2
+*.tgz
+*.zip
+*.zst
 ```
