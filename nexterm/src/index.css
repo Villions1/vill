@@ -122,7 +122,8 @@
 
   .context-menu {
     @apply absolute z-50 bg-surface-overlay rounded-lg border border-sidebar-border
-           shadow-xl py-1 min-w-[180px] animate-in fade-in;
+           shadow-xl py-1 min-w-[180px];
+    animation: animateIn 0.15s ease-out;
   }
 
   .context-menu-item {
