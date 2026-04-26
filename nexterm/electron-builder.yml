@@ -1,0 +1,38 @@
+appId: com.nexterm.app
+productName: NexTerm
+directories:
+  output: release
+  buildResources: resources
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - "!node_modules/**/*.{md,txt,map}"
+asar: true
+linux:
+  target:
+    - target: deb
+      arch: [x64, arm64]
+    - target: rpm
+      arch: [x64, arm64]
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: tar.gz
+      arch: [x64, arm64]
+  category: Network
+  icon: resources/icon.png
+  desktop:
+    Name: NexTerm
+    Comment: Modern SSH Client
+    Categories: Network;RemoteAccess;
+    Keywords: ssh;terminal;sftp;remote;
+  maintainer: NexTerm Contributors
+deb:
+  depends:
+    - libnotify4
+    - libxtst6
+    - libnss3
+rpm:
+  depends:
+    - libnotify
+    - libXtst
+    - nss
