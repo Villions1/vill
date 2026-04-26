@@ -48,13 +48,19 @@ function createWindow() {
 }
 
 function initServices() {
-  const userDataPath = app.getPath('userData');
-  db = new DatabaseService(userDataPath);
-  sshService = new SSHService();
-  sftpService = new SFTPService();
-  keyManager = new KeyManagerService(db);
-  tunnelManager = new TunnelManagerService();
-  scriptRunner = new ScriptRunnerService();
+  try {
+    const userDataPath = app.getPath('userData');
+    db = new DatabaseService(userDataPath);
+    sshService = new SSHService();
+    sftpService = new SFTPService();
+    keyManager = new KeyManagerService(db);
+    tunnelManager = new TunnelManagerService();
+    scriptRunner = new ScriptRunnerService();
+    console.log('All services initialized successfully');
+  } catch (err) {
+    console.error('Failed to initialize services:', err);
+    throw err;
+  }
 }
 
 function registerIPCHandlers() {
