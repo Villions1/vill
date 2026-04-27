@@ -4,6 +4,7 @@
   "description": "valkyrieTUN — Modern SSH client for Linux: terminal, SFTP, key management, tunnels, scripting",
   "main": "dist-electron/main.js",
   "author": "valkyrieTUN Contributors",
+  "homepage": "https://github.com/Villions1/vill",
   "license": "MIT",
   "private": true,
   "scripts": {
