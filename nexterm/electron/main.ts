@@ -291,8 +291,13 @@ function registerIPCHandlers() {
 
   // Local filesystem for SFTP pane
   ipcMain.handle('fs:listLocal', async (_, dirPath: string) => {
+    const resolved = path.resolve(dirPath);
+    const home = app.getPath('home');
+    if (!resolved.startsWith(home) && !resolved.startsWith('/tmp')) {
+      throw new Error('Access denied: path outside home directory');
+    }
     const fs = await import('fs/promises');
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const entries = await fs.readdir(resolved, { withFileTypes: true });
     return entries.map((e) => ({
       name: e.name,
       isDirectory: e.isDirectory(),
@@ -380,8 +385,16 @@ function registerIPCHandlers() {
     return result;
   });
 
-  // Shell
-  ipcMain.handle('shell:openExternal', (_, url: string) => shell.openExternal(url));
+  // Shell — whitelist to http/https only
+  ipcMain.handle('shell:openExternal', (_, url: string) => {
+    if (typeof url !== 'string') return;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol === 'https:' || parsed.protocol === 'http:') {
+        shell.openExternal(url);
+      }
+    } catch { /* invalid URL, ignore */ }
+  });
 
   // Local Terminal (PTY)
   ipcMain.handle('localPty:spawn', (event, id: string, cols: number, rows: number) => {

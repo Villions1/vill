@@ -1,4 +1,4 @@
-import { execSync, exec } from 'child_process';
+import { execSync, execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -26,15 +26,14 @@ export class KeyManagerService {
     const keyName = `vktun_${opts.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}`;
     const keyPath = path.join(keyDir, keyName);
 
-    let cmd = `ssh-keygen -t ${opts.type}`;
-    if (opts.type === 'rsa') cmd += ` -b ${opts.bits || 4096}`;
-    if (opts.type === 'ecdsa') cmd += ` -b ${opts.bits || 521}`;
-    cmd += ` -f "${keyPath}"`;
-    cmd += ` -N "${opts.passphrase || ''}"`;
-    if (opts.comment) cmd += ` -C "${opts.comment}"`;
+    const args = ['-t', opts.type];
+    if (opts.type === 'rsa') args.push('-b', String(opts.bits || 4096));
+    if (opts.type === 'ecdsa') args.push('-b', String(opts.bits || 521));
+    args.push('-f', keyPath, '-N', opts.passphrase || '');
+    if (opts.comment) args.push('-C', opts.comment);
 
     return new Promise((resolve, reject) => {
-      exec(cmd, (err) => {
+      execFile('ssh-keygen', args, (err) => {
         if (err) { reject(err); return; }
         const publicKey = fs.readFileSync(`${keyPath}.pub`, 'utf-8').trim();
         const fingerprint = this.getFingerprint(keyPath);
