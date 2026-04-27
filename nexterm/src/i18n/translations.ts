@@ -153,10 +153,30 @@ const translations = {
   'about.description': { en: 'A production-ready SSH client with terminal emulation, SFTP file management, key management, scripts, and port forwarding. Built with Electron, React, and xterm.js.', ru: 'Готовый к продакшену SSH клиент с эмуляцией терминала, SFTP файловым менеджером, управлением ключами, скриптами и перенаправлением портов. Построен на Electron, React и xterm.js.' },
   'about.noCloud': { en: 'No cloud sync. No telemetry. Fully offline. All data stays local.', ru: 'Без облачной синхронизации. Без телеметрии. Полностью оффлайн. Все данные локальны.' },
 
+  // Sessions extra
+  'sessions.deleteGroup': { en: 'Delete group', ru: 'Удалить группу' },
+  'sessions.editGroup': { en: 'Rename group', ru: 'Переименовать группу' },
+  'sessions.ungrouped': { en: 'Ungrouped', ru: 'Без группы' },
+  'sessions.createSession': { en: 'Create Session', ru: 'Создать сессию' },
+  'sessions.connect': { en: 'Connect', ru: 'Подключить' },
+  'sessions.edit': { en: 'Edit', ru: 'Редактировать' },
+  'sessions.duplicate': { en: 'Duplicate', ru: 'Дублировать' },
+  'sessions.delete': { en: 'Delete', ru: 'Удалить' },
+  'sessions.confirmDelete': { en: 'Delete', ru: 'Удалить' },
+  'sessions.confirmDeleteGroup': { en: 'Delete group', ru: 'Удалить группу' },
+  'sessions.groupName': { en: 'Group name', ru: 'Имя группы' },
+  'sessions.create': { en: 'Create', ru: 'Создать' },
+
+  // Local terminal
+  'localTerminal.title': { en: 'Local Terminal', ru: 'Локальный терминал' },
+  'localTerminal.open': { en: 'Open local terminal', ru: 'Открыть локальный терминал' },
+  'localTerminal.close': { en: 'Close', ru: 'Закрыть' },
+
   // Common
   'common.block': { en: 'Block', ru: 'Блок' },
   'common.underline': { en: 'Underline', ru: 'Подчёркивание' },
   'common.bar': { en: 'Bar', ru: 'Полоска' },
+  'common.cancel': { en: 'Cancel', ru: 'Отмена' },
 } as const;
 
 export type TranslationKey = keyof typeof translations;

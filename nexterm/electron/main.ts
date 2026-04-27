@@ -7,8 +7,11 @@ import { KeyManagerService } from './services/keyManager';
 import { TunnelManagerService } from './services/tunnelManager';
 import { ScriptRunnerService } from './services/scriptRunner';
 import { encrypt, decrypt, hashPassword, verifyPassword } from './services/crypto';
+import * as pty from 'node-pty';
+import os from 'os';
 
 let mainWindow: BrowserWindow | null = null;
+const localPtys: Map<string, pty.IPty> = new Map();
 let activeMasterKey: string | null = null;
 let db: DatabaseService;
 let sshService: SSHService;
@@ -379,6 +382,54 @@ function registerIPCHandlers() {
 
   // Shell
   ipcMain.handle('shell:openExternal', (_, url: string) => shell.openExternal(url));
+
+  // Local Terminal (PTY)
+  ipcMain.handle('localPty:spawn', (event, id: string, cols: number, rows: number) => {
+    const shellPath = process.env.SHELL || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash');
+    const homeDir = os.homedir();
+    const ptyProcess = pty.spawn(shellPath, [], {
+      name: 'xterm-256color',
+      cols: cols || 80,
+      rows: rows || 24,
+      cwd: homeDir,
+      env: { ...process.env } as Record<string, string>,
+    });
+
+    localPtys.set(id, ptyProcess);
+
+    ptyProcess.onData((data: string) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(`localPty:data:${id}`, data);
+      }
+    });
+
+    ptyProcess.onExit(() => {
+      localPtys.delete(id);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(`localPty:exit:${id}`);
+      }
+    });
+
+    return true;
+  });
+
+  ipcMain.handle('localPty:write', (_, id: string, data: string) => {
+    const p = localPtys.get(id);
+    if (p) p.write(data);
+  });
+
+  ipcMain.handle('localPty:resize', (_, id: string, cols: number, rows: number) => {
+    const p = localPtys.get(id);
+    if (p) p.resize(cols, rows);
+  });
+
+  ipcMain.handle('localPty:kill', (_, id: string) => {
+    const p = localPtys.get(id);
+    if (p) {
+      p.kill();
+      localPtys.delete(id);
+    }
+  });
 }
 
 let servicesReady = false;
@@ -406,5 +457,9 @@ app.on('window-all-closed', () => {
     sftpService.disconnectAll();
     tunnelManager.stopAll();
   }
+  for (const [, p] of localPtys) {
+    try { p.kill(); } catch {}
+  }
+  localPtys.clear();
   app.quit();
 });
