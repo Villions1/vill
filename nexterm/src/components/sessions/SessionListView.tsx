@@ -10,8 +10,8 @@ import { useI18n } from '../../i18n/useI18n';
 
 export function SessionListView() {
   const {
-    groups, searchQuery, selectedGroupId,
-    setSearchQuery, setSelectedGroupId, deleteSession, deleteGroup,
+    groups, searchQuery,
+    setSearchQuery, deleteSession, deleteGroup, updateGroup,
     exportSessions, importSessions, createGroup,
   } = useSessionStore();
   const setCurrentView = useAppStore((s) => s.setCurrentView);
@@ -19,12 +19,26 @@ export function SessionListView() {
   const [editingSession, setEditingSession] = useState<SSHSession | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; session: SSHSession } | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['__all__']));
   const [newGroupName, setNewGroupName] = useState('');
   const [showNewGroup, setShowNewGroup] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
   const { t } = useI18n();
 
-  const filteredSessions = useSessionStore((s) => s.getFilteredSessions());
+  const allSessions = useSessionStore((s) => {
+    const { sessions, searchQuery: q } = s;
+    if (!q.trim()) return sessions;
+    const ql = q.toLowerCase();
+    return sessions.filter(
+      (s) =>
+        s.name.toLowerCase().includes(ql) ||
+        s.host.toLowerCase().includes(ql) ||
+        s.username.toLowerCase().includes(ql) ||
+        s.labels.some((l) => l.toLowerCase().includes(ql)) ||
+        s.notes.toLowerCase().includes(ql)
+    );
+  });
 
   const connectSession = (session: SSHSession) => {
     openTab(session.id, session.name);
@@ -53,8 +67,16 @@ export function SessionListView() {
     }
   };
 
-  const ungroupedSessions = filteredSessions.filter((s) => !s.groupId);
-  const getGroupSessions = (groupId: string) => filteredSessions.filter((s) => s.groupId === groupId);
+  const handleRenameGroup = (groupId: string) => {
+    if (editGroupName.trim()) {
+      updateGroup(groupId, { name: editGroupName.trim() });
+      setEditingGroupId(null);
+      setEditGroupName('');
+    }
+  };
+
+  const ungroupedSessions = allSessions.filter((s) => !s.groupId);
+  const getGroupSessions = (groupId: string) => allSessions.filter((s) => s.groupId === groupId);
 
   if (editingSession || isCreating) {
     return (
@@ -74,10 +96,10 @@ export function SessionListView() {
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <h2 className="text-lg font-semibold text-text-primary">{t('sessions.title')}</h2>
         <div className="flex items-center gap-2">
-          <button onClick={() => importSessions()} className="btn-ghost" title="Import">
+          <button onClick={() => importSessions()} className="btn-ghost" title={t('sessions.import')}>
             <Upload size={16} />
           </button>
-          <button onClick={() => exportSessions()} className="btn-ghost" title="Export">
+          <button onClick={() => exportSessions()} className="btn-ghost" title={t('sessions.export')}>
             <Download size={16} />
           </button>
           <button onClick={() => { setShowNewGroup(true); }} className="btn-ghost flex items-center gap-1">
@@ -104,45 +126,20 @@ export function SessionListView() {
         </div>
       </div>
 
-      {/* Group filter */}
-      <div className="px-4 pb-2 flex gap-2 flex-wrap">
-        <button
-          onClick={() => setSelectedGroupId(null)}
-          className={`text-xs px-2 py-1 rounded-full transition-colors ${
-            !selectedGroupId ? 'bg-accent text-white' : 'bg-surface-raised text-text-secondary hover:text-text-primary'
-          }`}
-        >
-          {t('sessions.allGroups')}
-        </button>
-        {groups.map((g) => (
-          <button
-            key={g.id}
-            onClick={() => setSelectedGroupId(g.id === selectedGroupId ? null : g.id)}
-            className={`text-xs px-2 py-1 rounded-full transition-colors ${
-              g.id === selectedGroupId
-                ? 'bg-accent text-white'
-                : 'bg-surface-raised text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {g.name}
-          </button>
-        ))}
-      </div>
-
       {/* New Group Input */}
       {showNewGroup && (
         <div className="px-4 pb-2 flex gap-2">
           <input
             type="text"
-            placeholder="Group name"
+            placeholder={t('sessions.groupName')}
             value={newGroupName}
             onChange={(e) => setNewGroupName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleCreateGroup()}
             className="input-field flex-1"
             autoFocus
           />
-          <button onClick={handleCreateGroup} className="btn-primary">Create</button>
-          <button onClick={() => setShowNewGroup(false)} className="btn-ghost">Cancel</button>
+          <button onClick={handleCreateGroup} className="btn-primary">{t('sessions.create')}</button>
+          <button onClick={() => setShowNewGroup(false)} className="btn-ghost">{t('common.cancel')}</button>
         </div>
       )}
 
@@ -155,24 +152,56 @@ export function SessionListView() {
           const isExpanded = expandedGroups.has(group.id);
 
           return (
-            <div key={group.id} className="mb-2">
-              <button
-                onClick={() => toggleGroup(group.id)}
-                className="flex items-center gap-2 w-full py-2 text-sm font-medium text-text-secondary hover:text-text-primary"
-              >
-                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                <span style={{ color: group.color || undefined }}>{group.name}</span>
-                <span className="text-2xs text-text-muted">({groupSessions.length})</span>
+            <div key={group.id} className="mb-2 group/grp">
+              <div className="flex items-center gap-2 w-full py-2 text-sm font-medium text-text-secondary">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm(`Delete group "${group.name}"?`)) deleteGroup(group.id);
-                  }}
-                  className="ml-auto p-1 hover:bg-danger/20 rounded opacity-0 group-hover:opacity-100"
+                  onClick={() => toggleGroup(group.id)}
+                  className="flex items-center gap-2 flex-1 hover:text-text-primary"
                 >
-                  <Trash2 size={12} className="text-danger" />
+                  {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  {editingGroupId === group.id ? (
+                    <input
+                      type="text"
+                      value={editGroupName}
+                      onChange={(e) => setEditGroupName(e.target.value)}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === 'Enter') handleRenameGroup(group.id);
+                        if (e.key === 'Escape') setEditingGroupId(null);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="input-field text-sm py-0.5 px-1.5 w-40"
+                      autoFocus
+                    />
+                  ) : (
+                    <span style={{ color: group.color || undefined }}>{group.name}</span>
+                  )}
+                  <span className="text-2xs text-text-muted">({groupSessions.length})</span>
                 </button>
-              </button>
+                <div className="flex items-center gap-0.5 opacity-0 group-hover/grp:opacity-100 transition-opacity">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingGroupId(group.id);
+                      setEditGroupName(group.name);
+                    }}
+                    className="p-1 hover:bg-surface-overlay rounded"
+                    title={t('sessions.editGroup')}
+                  >
+                    <Edit size={12} className="text-text-secondary" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirm(`${t('sessions.confirmDeleteGroup')} "${group.name}"?`)) deleteGroup(group.id);
+                    }}
+                    className="p-1 hover:bg-danger/20 rounded"
+                    title={t('sessions.deleteGroup')}
+                  >
+                    <Trash2 size={12} className="text-danger" />
+                  </button>
+                </div>
+              </div>
               {isExpanded && (
                 <div className="ml-4 space-y-1">
                   {groupSessions.map((session) => (
@@ -181,6 +210,7 @@ export function SessionListView() {
                       session={session}
                       onConnect={connectSession}
                       onEdit={setEditingSession}
+                      onDelete={deleteSession}
                       onContextMenu={handleContextMenu}
                     />
                   ))}
@@ -194,7 +224,7 @@ export function SessionListView() {
         {ungroupedSessions.length > 0 && (
           <div className="space-y-1">
             {groups.length > 0 && (
-              <div className="text-xs text-text-muted py-2 font-medium">Ungrouped</div>
+              <div className="text-xs text-text-muted py-2 font-medium">{t('sessions.ungrouped')}</div>
             )}
             {ungroupedSessions.map((session) => (
               <SessionItem
@@ -202,19 +232,20 @@ export function SessionListView() {
                 session={session}
                 onConnect={connectSession}
                 onEdit={setEditingSession}
+                onDelete={deleteSession}
                 onContextMenu={handleContextMenu}
               />
             ))}
           </div>
         )}
 
-        {filteredSessions.length === 0 && (
+        {allSessions.length === 0 && (
           <div className="text-center py-12 text-text-muted">
             <Server size={48} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">No sessions found</p>
+            <p className="text-sm">{t('sessions.noSessions')}</p>
             <button onClick={() => setIsCreating(true)} className="btn-primary mt-4">
               <Plus size={16} className="inline mr-1" />
-              Create Session
+              {t('sessions.createSession')}
             </button>
           </div>
         )}
@@ -235,7 +266,7 @@ export function SessionListView() {
                 setContextMenu(null);
               }}
             >
-              <Server size={14} /> Connect
+              <Server size={14} /> {t('sessions.connect')}
             </button>
             <button
               className="context-menu-item w-full"
@@ -244,30 +275,29 @@ export function SessionListView() {
                 setContextMenu(null);
               }}
             >
-              <Edit size={14} /> Edit
+              <Edit size={14} /> {t('sessions.edit')}
             </button>
             <button
               className="context-menu-item w-full"
               onClick={() => {
-                // Duplicate
                 const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = contextMenu.session;
                 useSessionStore.getState().createSession({ ...rest, name: `${rest.name} (copy)` });
                 setContextMenu(null);
               }}
             >
-              <Copy size={14} /> Duplicate
+              <Copy size={14} /> {t('sessions.duplicate')}
             </button>
             <hr className="border-sidebar-border my-1" />
             <button
               className="context-menu-item w-full text-danger hover:!text-danger"
               onClick={() => {
-                if (confirm(`Delete "${contextMenu.session.name}"?`)) {
+                if (confirm(`${t('sessions.delete')} "${contextMenu.session.name}"?`)) {
                   deleteSession(contextMenu.session.id);
                 }
                 setContextMenu(null);
               }}
             >
-              <Trash2 size={14} /> Delete
+              <Trash2 size={14} /> {t('sessions.delete')}
             </button>
           </div>
         </>
@@ -280,11 +310,13 @@ function SessionItem({
   session,
   onConnect,
   onEdit,
+  onDelete,
   onContextMenu,
 }: {
   session: SSHSession;
   onConnect: (s: SSHSession) => void;
   onEdit: (s: SSHSession) => void;
+  onDelete: (id: string) => Promise<void>;
   onContextMenu: (e: React.MouseEvent, s: SSHSession) => void;
 }) {
   return (
@@ -319,6 +351,17 @@ function SessionItem({
           className="p-1.5 hover:bg-surface-overlay rounded"
         >
           <Edit size={14} className="text-text-secondary" />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`Delete "${session.name}"?`)) {
+              onDelete(session.id);
+            }
+          }}
+          className="p-1.5 hover:bg-danger/20 rounded"
+        >
+          <Trash2 size={14} className="text-danger" />
         </button>
         <button
           onClick={(e) => {

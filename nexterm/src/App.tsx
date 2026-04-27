@@ -10,8 +10,11 @@ import { ScriptLibraryView } from './components/scripts/ScriptLibraryView';
 import { TunnelManagerView } from './components/tunnels/TunnelManagerView';
 import { SettingsView } from './components/settings/SettingsView';
 import { LockScreen } from './components/auth/LockScreen';
+import { LocalTerminalPanel } from './components/terminal/LocalTerminalPanel';
 import { useAppStore, useSessionStore, useSettingsStore, useTerminalStore } from './store';
 import { api } from './lib/api';
+import { TerminalSquare } from 'lucide-react';
+import { useI18n } from './i18n/useI18n';
 
 export default function App() {
   const currentView = useAppStore((s) => s.currentView);
@@ -24,6 +27,9 @@ export default function App() {
 
   const [locked, setLocked] = useState(true);
   const [checkingLock, setCheckingLock] = useState(true);
+  const [showLocalTerminal, setShowLocalTerminal] = useState(false);
+  const [localTerminalWidth, setLocalTerminalWidth] = useState(480);
+  const { t } = useI18n();
 
   useEffect(() => {
     api.crypto.isUnlocked().then((unlocked: boolean) => {
@@ -93,7 +99,27 @@ export default function App() {
             </div>
           )}
         </main>
+
+        {/* Local Terminal Panel */}
+        {showLocalTerminal && (
+          <LocalTerminalPanel
+            onClose={() => setShowLocalTerminal(false)}
+            width={localTerminalWidth}
+            onWidthChange={setLocalTerminalWidth}
+          />
+        )}
       </div>
+
+      {/* Local Terminal Toggle Button */}
+      {!showLocalTerminal && (
+        <button
+          onClick={() => setShowLocalTerminal(true)}
+          className="fixed bottom-4 right-4 z-50 p-2.5 rounded-xl bg-accent text-white shadow-lg hover:bg-accent/90 transition-colors"
+          title={t('localTerminal.open')}
+        >
+          <TerminalSquare size={20} />
+        </button>
+      )}
     </div>
   );
 }

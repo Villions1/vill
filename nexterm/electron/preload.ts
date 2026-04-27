@@ -142,6 +142,26 @@ const api = {
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell:openExternal', url),
   },
+
+  // Local Terminal (PTY)
+  localPty: {
+    spawn: (id: string, cols: number, rows: number) => ipcRenderer.invoke('localPty:spawn', id, cols, rows),
+    write: (id: string, data: string) => ipcRenderer.invoke('localPty:write', id, data),
+    resize: (id: string, cols: number, rows: number) => ipcRenderer.invoke('localPty:resize', id, cols, rows),
+    kill: (id: string) => ipcRenderer.invoke('localPty:kill', id),
+    onData: (id: string, callback: (data: string) => void) => {
+      const channel = `localPty:data:${id}`;
+      const handler = (_: unknown, data: string) => callback(data);
+      ipcRenderer.on(channel, handler);
+      return () => ipcRenderer.removeListener(channel, handler);
+    },
+    onExit: (id: string, callback: () => void) => {
+      const channel = `localPty:exit:${id}`;
+      const handler = () => callback();
+      ipcRenderer.on(channel, handler);
+      return () => ipcRenderer.removeListener(channel, handler);
+    },
+  },
 };
 
 contextBridge.exposeInMainWorld('valkyrieTUN', api);
