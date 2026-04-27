@@ -162,6 +162,8 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
         // Safety: verify terminal ref is still the same instance after async
         if (terminalRef.current !== term) {
           api.ssh.disconnect(connId as string);
+          updateTab(tabId, { isConnecting: false });
+          connectInitiatedRef.current = false;
           return;
         }
 
