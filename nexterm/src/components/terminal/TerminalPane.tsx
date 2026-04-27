@@ -6,7 +6,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { Search, X, AlertCircle, Loader2 } from 'lucide-react';
 import '@xterm/xterm/css/xterm.css';
-import { useTerminalStore, useSessionStore, useSettingsStore } from '../../store';
+import { useTerminalStore, useSessionStore, useSettingsStore, useAppStore } from '../../store';
 import { api } from '../../lib/api';
 
 interface TerminalPaneProps {
@@ -25,6 +25,7 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
   const sessions = useSessionStore((s) => s.sessions);
   const settings = useSettingsStore((s) => s.settings);
 
+  const currentView = useAppStore((s) => s.currentView);
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +36,7 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
 
     const term = new Terminal({
       allowProposedApi: true,
-      fontFamily: settings.fontFamily || 'JetBrains Mono',
+      fontFamily: settings.fontFamily || "'JetBrainsMono Nerd Font', 'JetBrains Mono', 'Fira Code', monospace",
       fontSize: parseInt(settings.fontSize) || 14,
       cursorStyle: (settings.cursorStyle as 'block' | 'underline' | 'bar') || 'block',
       cursorBlink: true,
@@ -116,6 +117,20 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
     const cleanup = initTerminal();
     return () => cleanup?.();
   }, [initTerminal]);
+
+  // Re-fit terminal when switching back to terminal view
+  useEffect(() => {
+    if (currentView === 'terminal' && fitAddonRef.current && terminalRef.current) {
+      setTimeout(() => {
+        try {
+          fitAddonRef.current?.fit();
+          terminalRef.current?.focus();
+        } catch {
+          // ignore fit errors during transition
+        }
+      }, 50);
+    }
+  }, [currentView]);
 
   // Connect to SSH
   useEffect(() => {
@@ -216,6 +231,35 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
         // NOW tell main process to flush buffered data and start direct forwarding
         await api.ssh.ready(connId as string);
 
+        // Auto-setup Oh My Zsh if enabled in settings
+        const currentSettings = useSettingsStore.getState().settings;
+        if (currentSettings.autoSetupZsh === 'true') {
+          setTimeout(() => {
+            const currentTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId);
+            if (currentTab?.connectionId) {
+              const setupScript = [
+                '# valkyrieTUN: Auto-setup Oh My Zsh',
+                'if ! command -v zsh >/dev/null 2>&1; then',
+                '  if command -v apt-get >/dev/null 2>&1; then apt-get install -y zsh >/dev/null 2>&1;',
+                '  elif command -v yum >/dev/null 2>&1; then yum install -y zsh >/dev/null 2>&1;',
+                '  elif command -v pacman >/dev/null 2>&1; then pacman -S --noconfirm zsh >/dev/null 2>&1;',
+                '  fi',
+                'fi',
+                'if [ ! -d "$HOME/.oh-my-zsh" ] && command -v zsh >/dev/null 2>&1; then',
+                '  RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" >/dev/null 2>&1',
+                '  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k >/dev/null 2>&1',
+                '  git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions >/dev/null 2>&1',
+                '  git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting >/dev/null 2>&1',
+                '  sed -i \'s/ZSH_THEME="robbyrussell"/ZSH_THEME="powerlevel10k\\/powerlevel10k"/\' $HOME/.zshrc',
+                '  sed -i \'s/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting)/\' $HOME/.zshrc',
+                'fi',
+                'if command -v zsh >/dev/null 2>&1 && [ -d "$HOME/.oh-my-zsh" ]; then exec zsh; fi',
+              ].join('\n');
+              api.ssh.write(currentTab.connectionId, setupScript + '\n');
+            }
+          }, 500);
+        }
+
         // Run post-login script if set
         if (session?.postLoginScript) {
           setTimeout(() => {
@@ -223,7 +267,7 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
             if (currentTab?.connectionId) {
               api.scripts.run(currentTab.connectionId, session.postLoginScript!);
             }
-          }, 1000);
+          }, 1500);
         }
 
         cleanupRef.current = () => {

@@ -9,7 +9,7 @@ import { KeyManagerView } from './components/keys/KeyManagerView';
 import { ScriptLibraryView } from './components/scripts/ScriptLibraryView';
 import { TunnelManagerView } from './components/tunnels/TunnelManagerView';
 import { SettingsView } from './components/settings/SettingsView';
-import { useAppStore, useSessionStore, useSettingsStore } from './store';
+import { useAppStore, useSessionStore, useSettingsStore, useTerminalStore } from './store';
 
 export default function App() {
   const currentView = useAppStore((s) => s.currentView);
@@ -18,6 +18,7 @@ export default function App() {
   const loadSessions = useSessionStore((s) => s.loadSessions);
   const loadGroups = useSessionStore((s) => s.loadGroups);
   const loadRecent = useSessionStore((s) => s.loadRecent);
+  const terminalTabs = useTerminalStore((s) => s.tabs);
 
   useEffect(() => {
     loadSettings();
@@ -37,8 +38,6 @@ export default function App() {
         return <HomeView />;
       case 'sessions':
         return <SessionListView />;
-      case 'terminal':
-        return <TerminalView />;
       case 'sftp':
         return <FileManagerView />;
       case 'keys':
@@ -59,7 +58,19 @@ export default function App() {
       <TitleBar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 overflow-hidden">{renderView()}</main>
+        <main className="flex-1 overflow-hidden relative">
+          {/* Terminal stays mounted in background to preserve SSH sessions */}
+          {terminalTabs.length > 0 && (
+            <div className={`absolute inset-0 ${currentView === 'terminal' ? 'z-10' : 'z-0 invisible'}`}>
+              <TerminalView />
+            </div>
+          )}
+          {currentView !== 'terminal' && (
+            <div className="absolute inset-0 z-10">
+              {renderView()}
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );
