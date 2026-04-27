@@ -91,26 +91,29 @@ export function TerminalView() {
         </div>
       </div>
 
-      {/* Terminal area */}
-      <div className="flex-1 overflow-hidden bg-[#1a1d23]">
+      {/* Terminal area — render all tabs, show/hide via CSS to preserve state */}
+      <div className="flex-1 overflow-hidden bg-[#1a1d23] relative">
         {splitMode === 'none' ? (
-          <TerminalPane
-            key={activeTabId}
-            tabId={activeTabId!}
-          />
+          <>
+            {tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="absolute inset-0"
+                style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
+              >
+                <TerminalPane tabId={tab.id} isActive={tab.id === activeTabId} />
+              </div>
+            ))}
+          </>
         ) : (
           <div className={`h-full flex ${splitMode === 'horizontal' ? 'flex-col' : 'flex-row'}`}>
             <div className="flex-1 min-h-0 min-w-0">
-              <TerminalPane
-                key={activeTabId}
-                tabId={activeTabId!}
-              />
+              <TerminalPane tabId={activeTabId!} />
             </div>
             <div className={`${splitMode === 'horizontal' ? 'h-px' : 'w-px'} bg-sidebar-border`} />
             <div className="flex-1 min-h-0 min-w-0">
               {tabs.length > 1 ? (
                 <TerminalPane
-                  key={tabs.find((t) => t.id !== activeTabId)?.id}
                   tabId={tabs.find((t) => t.id !== activeTabId)?.id || ''}
                 />
               ) : (

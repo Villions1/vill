@@ -11,9 +11,10 @@ import { api } from '../../lib/api';
 
 interface TerminalPaneProps {
   tabId: string;
+  isActive?: boolean;
 }
 
-export function TerminalPane({ tabId }: TerminalPaneProps) {
+export function TerminalPane({ tabId, isActive }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -118,19 +119,19 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
     return () => cleanup?.();
   }, [initTerminal]);
 
-  // Re-fit terminal when switching back to terminal view
+  // Re-fit terminal when switching back to terminal view or when tab becomes active
   useEffect(() => {
     if (currentView === 'terminal' && fitAddonRef.current && terminalRef.current) {
       setTimeout(() => {
         try {
           fitAddonRef.current?.fit();
-          terminalRef.current?.focus();
+          if (isActive !== false) terminalRef.current?.focus();
         } catch {
           // ignore fit errors during transition
         }
       }, 50);
     }
-  }, [currentView]);
+  }, [currentView, isActive]);
 
   // Connect to SSH
   useEffect(() => {

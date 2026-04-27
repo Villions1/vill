@@ -249,6 +249,15 @@ function registerIPCHandlers() {
 
   // SFTP
   ipcMain.handle('sftp:connect', async (_, sessionData) => {
+    // Decrypt credentials if master password is active (same as ssh:connect)
+    if (activeMasterKey) {
+      if (sessionData.password && typeof sessionData.password === 'string' && sessionData.password.startsWith('ENC:')) {
+        try { sessionData.password = decrypt(sessionData.password, activeMasterKey); } catch { /* use as-is */ }
+      }
+      if (sessionData.passphrase && typeof sessionData.passphrase === 'string' && sessionData.passphrase.startsWith('ENC:')) {
+        try { sessionData.passphrase = decrypt(sessionData.passphrase, activeMasterKey); } catch { /* use as-is */ }
+      }
+    }
     return sftpService.connect(sessionData);
   });
   ipcMain.handle('sftp:list', async (_, connId: string, remotePath: string) => {
@@ -328,6 +337,15 @@ function registerIPCHandlers() {
   ipcMain.handle('tunnels:update', (_, id: string, tunnel) => safeDb(() => db.updateTunnel(id, tunnel), null));
   ipcMain.handle('tunnels:delete', (_, id: string) => safeDb(() => db.deleteTunnel(id), null));
   ipcMain.handle('tunnels:start', async (_, tunnelId: string, sessionData) => {
+    // Decrypt credentials if master password is active
+    if (activeMasterKey && sessionData) {
+      if (sessionData.password && typeof sessionData.password === 'string' && sessionData.password.startsWith('ENC:')) {
+        try { sessionData.password = decrypt(sessionData.password, activeMasterKey); } catch { /* use as-is */ }
+      }
+      if (sessionData.passphrase && typeof sessionData.passphrase === 'string' && sessionData.passphrase.startsWith('ENC:')) {
+        try { sessionData.passphrase = decrypt(sessionData.passphrase, activeMasterKey); } catch { /* use as-is */ }
+      }
+    }
     const tunnel = safeDb(() => db.getTunnelById(tunnelId), null);
     if (tunnel) return tunnelManager.startTunnel(tunnel as unknown as Parameters<typeof tunnelManager.startTunnel>[0], sessionData);
   });
