@@ -1,4 +1,4 @@
-import { execSync, execFile } from 'child_process';
+import { execFileSync, execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -121,7 +121,7 @@ export class KeyManagerService {
 
   private getFingerprint(keyPath: string): string {
     try {
-      return execSync(`ssh-keygen -lf "${keyPath}" 2>/dev/null`).toString().trim().split(' ')[1] || '';
+      return execFileSync('ssh-keygen', ['-lf', keyPath], { stdio: ['pipe', 'pipe', 'pipe'] }).toString().trim().split(' ')[1] || '';
     } catch {
       return '';
     }
