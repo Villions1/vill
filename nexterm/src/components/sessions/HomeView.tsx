@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { Clock, Server, Plus, Search, ArrowRight, Zap, KeyRound, Lock, X, FolderPlus } from 'lucide-react';
 import { useSessionStore, useAppStore, useTerminalStore } from '../../store';
 import type { SSHSession, SessionGroup } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 
 export function HomeView() {
-  const { recentSessions, loadRecent, sessions, groups, loadGroups, createSession, createGroup } = useSessionStore();
+  const { recentSessions, loadRecent, sessions, groups, loadGroups, createSession, createGroup, clearRecentSession, clearAllRecent } = useSessionStore();
   const { setCurrentView } = useAppStore();
   const openTab = useTerminalStore((s) => s.openTab);
   const [quickHost, setQuickHost] = useState('');
@@ -23,6 +24,7 @@ export function HomeView() {
   const [qcGroupId, setQcGroupId] = useState('');
   const [newGroupName, setNewGroupName] = useState('');
   const [showNewGroup, setShowNewGroup] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     loadRecent();
@@ -123,9 +125,9 @@ export function HomeView() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Welcome to valkyrieTUN</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">{t('home.welcome')}</h1>
           <p className="text-sm text-text-secondary mt-1">
-            Modern SSH client — connect to your servers securely
+            {t('home.subtitle')}
           </p>
         </div>
 
@@ -133,7 +135,7 @@ export function HomeView() {
         <div className="card">
           <div className="flex items-center gap-2 mb-3">
             <Zap size={18} className="text-accent" />
-            <h2 className="text-sm font-semibold text-text-primary">Quick Connect</h2>
+            <h2 className="text-sm font-semibold text-text-primary">{t('home.quickConnect')}</h2>
           </div>
 
           {!showQuickForm ? (
@@ -142,7 +144,7 @@ export function HomeView() {
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
                 <input
                   type="text"
-                  placeholder="user@hostname:port  (e.g. root@192.168.1.1)"
+                  placeholder={t('home.quickPlaceholder')}
                   value={quickHost}
                   onChange={(e) => setQuickHost(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && parseInput()}
@@ -151,7 +153,7 @@ export function HomeView() {
               </div>
               <button onClick={parseInput} className="btn-primary flex items-center gap-2">
                 <ArrowRight size={16} />
-                Connect
+                {t('home.connect')}
               </button>
             </div>
           ) : (
@@ -169,7 +171,7 @@ export function HomeView() {
 
               {/* Auth method */}
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Authentication</label>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.authMethod')}</label>
                 <div className="flex gap-2">
                   {(['password', 'key', 'agent'] as const).map((method) => (
                     <button
@@ -184,7 +186,7 @@ export function HomeView() {
                       {method === 'password' && <Lock size={14} />}
                       {method === 'key' && <KeyRound size={14} />}
                       {method === 'agent' && <Server size={14} />}
-                      {method === 'password' ? 'Password' : method === 'key' ? 'SSH Key' : 'Agent'}
+                      {method === 'password' ? t('home.password') : method === 'key' ? t('home.privateKey') : t('home.sshAgent')}
                     </button>
                   ))}
                 </div>
@@ -193,7 +195,7 @@ export function HomeView() {
               {/* Auth fields */}
               {qcAuthMethod === 'password' && (
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Password</label>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.password')}</label>
                   <input
                     type="password"
                     value={qcPassword}
@@ -209,7 +211,7 @@ export function HomeView() {
               {qcAuthMethod === 'key' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Private Key Path</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.keyPath')}</label>
                     <input
                       type="text"
                       value={qcKeyPath}
@@ -220,7 +222,7 @@ export function HomeView() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Passphrase (optional)</label>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.passphrase')}</label>
                     <input
                       type="password"
                       value={qcPassphrase}
@@ -240,13 +242,13 @@ export function HomeView() {
                     onChange={(e) => setQcSaveSession(e.target.checked)}
                     className="rounded"
                   />
-                  Save as session
+                  {t('home.saveSession')}
                 </label>
 
                 {qcSaveSession && (
                   <div className="mt-3 space-y-3 pl-6">
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Session Name</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.sessionName')}</label>
                       <input
                         type="text"
                         value={qcSessionName}
@@ -256,7 +258,7 @@ export function HomeView() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Group</label>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">{t('home.group')}</label>
                       <div className="flex gap-2">
                         {!showNewGroup ? (
                           <>
@@ -265,7 +267,7 @@ export function HomeView() {
                               onChange={(e) => setQcGroupId(e.target.value)}
                               className="select-field flex-1"
                             >
-                              <option value="">No group</option>
+                              <option value="">{t('home.noGroup')}</option>
                               {groups.map((g: SessionGroup) => (
                                 <option key={g.id} value={g.id}>{g.name}</option>
                               ))}
@@ -276,7 +278,7 @@ export function HomeView() {
                               title="Create new group"
                             >
                               <FolderPlus size={14} />
-                              New
+                              {t('home.newGroup')}
                             </button>
                           </>
                         ) : (
@@ -285,7 +287,7 @@ export function HomeView() {
                               type="text"
                               value={newGroupName}
                               onChange={(e) => setNewGroupName(e.target.value)}
-                              placeholder="New group name..."
+                              placeholder={t('home.newGroupName')}
                               className="input-field flex-1"
                               autoFocus
                             />
@@ -293,7 +295,7 @@ export function HomeView() {
                               onClick={() => { setShowNewGroup(false); setNewGroupName(''); }}
                               className="btn-ghost text-sm"
                             >
-                              Cancel
+                              {t('home.cancel')}
                             </button>
                           </>
                         )}
@@ -306,11 +308,11 @@ export function HomeView() {
               {/* Connect button */}
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowQuickForm(false)} className="btn-ghost">
-                  Cancel
+                  {t('home.cancel')}
                 </button>
                 <button onClick={handleQuickConnect} className="btn-primary flex items-center gap-2">
                   <ArrowRight size={16} />
-                  Connect
+                  {t('home.connect')}
                 </button>
               </div>
             </div>
@@ -322,39 +324,60 @@ export function HomeView() {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Clock size={18} className="text-text-secondary" />
-              <h2 className="text-sm font-semibold text-text-primary">Recent Sessions</h2>
+              <h2 className="text-sm font-semibold text-text-primary">{t('home.recentSessions')}</h2>
+              <button
+                onClick={() => clearAllRecent()}
+                className="ml-auto text-xs text-text-muted hover:text-warning transition-colors"
+                title="Clear all recent sessions"
+              >
+                {t('home.clearAll')}
+              </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {recentSessions.map((session) => (
-                <button
+                <div
                   key={session.id}
-                  onClick={() => connectSession(session)}
-                  className="card hover:border-accent/50 transition-colors text-left group"
+                  className="card hover:border-accent/50 transition-colors text-left group relative"
                 >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
-                      style={{ backgroundColor: session.colorTag || '#4A90D9' }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm text-text-primary group-hover:text-accent line-clamp-1">
-                        {session.name}
-                      </div>
-                      <div className="text-xs text-text-muted mt-0.5">
-                        {session.username}@{session.host}:{session.port}
-                      </div>
-                      {session.lastConnectedAt && (
-                        <div className="text-2xs text-text-muted mt-1">
-                          {new Date(session.lastConnectedAt).toLocaleDateString()}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearRecentSession(session.id);
+                    }}
+                    className="absolute top-2 right-2 p-1 rounded-full hover:bg-surface-overlay text-text-muted hover:text-warning opacity-0 group-hover:opacity-100 transition-all z-10"
+                    title="Forget this session"
+                  >
+                    <X size={12} />
+                  </button>
+                  <button
+                    onClick={() => connectSession(session)}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-2 h-2 rounded-full mt-2 flex-shrink-0"
+                        style={{ backgroundColor: session.colorTag || '#4A90D9' }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-text-primary group-hover:text-accent line-clamp-1">
+                          {session.name}
                         </div>
-                      )}
+                        <div className="text-xs text-text-muted mt-0.5">
+                          {session.username}@{session.host}:{session.port}
+                        </div>
+                        {session.lastConnectedAt && (
+                          <div className="text-2xs text-text-muted mt-1">
+                            {new Date(session.lastConnectedAt).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                      <ArrowRight
+                        size={14}
+                        className="text-text-muted group-hover:text-accent mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
                     </div>
-                    <ArrowRight
-                      size={14}
-                      className="text-text-muted group-hover:text-accent mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    />
-                  </div>
-                </button>
+                  </button>
+                </div>
               ))}
             </div>
           </div>
@@ -365,17 +388,17 @@ export function HomeView() {
           <div className="card text-center">
             <Server size={24} className="mx-auto text-accent mb-2" />
             <div className="text-2xl font-bold text-text-primary">{sessions.length}</div>
-            <div className="text-xs text-text-secondary">Saved Sessions</div>
+            <div className="text-xs text-text-secondary">{t('home.savedSessions')}</div>
           </div>
           <button onClick={() => setCurrentView('sessions')} className="card text-center hover:border-accent/50 transition-colors">
             <Plus size={24} className="mx-auto text-accent mb-2" />
-            <div className="text-sm font-medium text-text-primary">New Session</div>
-            <div className="text-xs text-text-secondary">Add a host</div>
+            <div className="text-sm font-medium text-text-primary">{t('sessions.newSession')}</div>
+            <div className="text-xs text-text-secondary">{t('home.openSession')}</div>
           </button>
           <button onClick={() => setCurrentView('keys')} className="card text-center hover:border-accent/50 transition-colors">
             <KeyRound size={24} className="mx-auto text-accent mb-2" />
-            <div className="text-sm font-medium text-text-primary">Manage Keys</div>
-            <div className="text-xs text-text-secondary">SSH keys</div>
+            <div className="text-sm font-medium text-text-primary">{t('keys.title')}</div>
+            <div className="text-xs text-text-secondary">{t('home.sshKeys')}</div>
           </button>
         </div>
       </div>

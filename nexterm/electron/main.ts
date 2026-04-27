@@ -6,8 +6,10 @@ import { DatabaseService } from './services/database';
 import { KeyManagerService } from './services/keyManager';
 import { TunnelManagerService } from './services/tunnelManager';
 import { ScriptRunnerService } from './services/scriptRunner';
+import { encrypt, decrypt, hashPassword, verifyPassword } from './services/crypto';
 
 let mainWindow: BrowserWindow | null = null;
+let activeMasterKey: string | null = null;
 let db: DatabaseService;
 let sshService: SSHService;
 let sftpService: SFTPService;
@@ -81,11 +83,101 @@ function registerIPCHandlers() {
   // Sessions CRUD
   ipcMain.handle('sessions:getAll', () => safeDb(() => db.getAllSessions(), []));
   ipcMain.handle('sessions:getById', (_, id: string) => safeDb(() => db.getSessionById(id), null));
-  ipcMain.handle('sessions:create', (_, session) => safeDb(() => db.createSession(session), null));
-  ipcMain.handle('sessions:update', (_, id: string, session) => safeDb(() => db.updateSession(id, session), null));
+  ipcMain.handle('sessions:create', (_, session) => {
+    if (activeMasterKey) {
+      if (session.password && !session.password.startsWith('ENC:')) {
+        session.password = encrypt(session.password, activeMasterKey);
+      }
+      if (session.passphrase && !session.passphrase.startsWith('ENC:')) {
+        session.passphrase = encrypt(session.passphrase, activeMasterKey);
+      }
+    }
+    return safeDb(() => db.createSession(session), null);
+  });
+  ipcMain.handle('sessions:update', (_, id: string, session) => {
+    if (activeMasterKey) {
+      if (session.password && !session.password.startsWith('ENC:')) {
+        session.password = encrypt(session.password, activeMasterKey);
+      }
+      if (session.passphrase && !session.passphrase.startsWith('ENC:')) {
+        session.passphrase = encrypt(session.passphrase, activeMasterKey);
+      }
+    }
+    return safeDb(() => db.updateSession(id, session), null);
+  });
   ipcMain.handle('sessions:delete', (_, id: string) => safeDb(() => db.deleteSession(id), null));
   ipcMain.handle('sessions:getRecent', () => safeDb(() => db.getRecentSessions(), []));
   ipcMain.handle('sessions:updateLastConnected', (_, id: string) => safeDb(() => db.updateLastConnected(id), null));
+  ipcMain.handle('sessions:clearLastConnected', (_, id: string) => safeDb(() => db.clearLastConnected(id), null));
+  ipcMain.handle('sessions:clearAllRecent', () => safeDb(() => db.clearAllRecent(), null));
+
+  // Crypto / Master Password
+  ipcMain.handle('crypto:setMasterPassword', (_, password: string) => {
+    const hash = hashPassword(password);
+    safeDb(() => db.updateSettings({ masterPasswordHash: hash }), null);
+    activeMasterKey = password;
+    // Encrypt all existing plaintext passwords
+    safeDb(() => {
+      const sessions = db.getAllSessions() as Array<Record<string, unknown>>;
+      for (const s of sessions) {
+        const updates: Record<string, unknown> = {};
+        if (s.password && typeof s.password === 'string' && !s.password.startsWith('ENC:')) {
+          updates.password = encrypt(s.password as string, password);
+        }
+        if (s.passphrase && typeof s.passphrase === 'string' && !s.passphrase.startsWith('ENC:')) {
+          updates.passphrase = encrypt(s.passphrase as string, password);
+        }
+        if (Object.keys(updates).length > 0) {
+          db.updateSession(s.id as string, updates);
+        }
+      }
+    }, null);
+    return true;
+  });
+
+  ipcMain.handle('crypto:verifyMasterPassword', (_, password: string) => {
+    const settings = safeDb(() => db.getSettings(), {} as Record<string, string>);
+    if (!settings.masterPasswordHash) return false;
+    const ok = verifyPassword(password, settings.masterPasswordHash);
+    if (ok) activeMasterKey = password;
+    return ok;
+  });
+
+  ipcMain.handle('crypto:hasMasterPassword', () => {
+    const settings = safeDb(() => db.getSettings(), {} as Record<string, string>);
+    return !!settings.masterPasswordHash;
+  });
+
+  ipcMain.handle('crypto:removeMasterPassword', (_, currentPassword: string) => {
+    const settings = safeDb(() => db.getSettings(), {} as Record<string, string>);
+    if (!settings.masterPasswordHash) return true;
+    if (!verifyPassword(currentPassword, settings.masterPasswordHash)) return false;
+    // Decrypt all stored passwords back to plaintext
+    safeDb(() => {
+      const sessions = db.getAllSessions() as Array<Record<string, unknown>>;
+      for (const s of sessions) {
+        const updates: Record<string, unknown> = {};
+        if (s.password && typeof s.password === 'string' && s.password.startsWith('ENC:')) {
+          try { updates.password = decrypt(s.password as string, currentPassword); } catch { /* skip */ }
+        }
+        if (s.passphrase && typeof s.passphrase === 'string' && s.passphrase.startsWith('ENC:')) {
+          try { updates.passphrase = decrypt(s.passphrase as string, currentPassword); } catch { /* skip */ }
+        }
+        if (Object.keys(updates).length > 0) {
+          db.updateSession(s.id as string, updates);
+        }
+      }
+    }, null);
+    safeDb(() => db.updateSettings({ masterPasswordHash: '' }), null);
+    activeMasterKey = null;
+    return true;
+  });
+
+  ipcMain.handle('crypto:isUnlocked', () => {
+    const settings = safeDb(() => db.getSettings(), {} as Record<string, string>);
+    if (!settings.masterPasswordHash) return true; // no password set = always unlocked
+    return activeMasterKey !== null;
+  });
 
   // Groups CRUD
   ipcMain.handle('groups:getAll', () => safeDb(() => db.getAllGroups(), []));
@@ -98,6 +190,16 @@ function registerIPCHandlers() {
   const sshState = new Map<string, { buffer: string[]; ready: boolean }>();
 
   ipcMain.handle('ssh:connect', async (_, sessionId: string, sessionData) => {
+    // Decrypt credentials if master password is active
+    if (activeMasterKey) {
+      if (sessionData.password && typeof sessionData.password === 'string' && sessionData.password.startsWith('ENC:')) {
+        try { sessionData.password = decrypt(sessionData.password, activeMasterKey); } catch { /* use as-is */ }
+      }
+      if (sessionData.passphrase && typeof sessionData.passphrase === 'string' && sessionData.passphrase.startsWith('ENC:')) {
+        try { sessionData.passphrase = decrypt(sessionData.passphrase, activeMasterKey); } catch { /* use as-is */ }
+      }
+    }
+
     const state = { buffer: [] as string[], ready: false };
     let resolvedConnId: string | null = null;
 

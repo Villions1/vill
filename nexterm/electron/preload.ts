@@ -20,6 +20,8 @@ const api = {
     updateLastConnected: (id: string) => ipcRenderer.invoke('sessions:updateLastConnected', id),
     export: () => ipcRenderer.invoke('sessions:export'),
     import: () => ipcRenderer.invoke('sessions:import'),
+    clearLastConnected: (id: string) => ipcRenderer.invoke('sessions:clearLastConnected', id),
+    clearAllRecent: () => ipcRenderer.invoke('sessions:clearAllRecent'),
   },
 
   // Groups
@@ -113,6 +115,15 @@ const api = {
       ipcRenderer.invoke('tunnels:start', tunnelId, sessionData),
     stop: (tunnelId: string) => ipcRenderer.invoke('tunnels:stop', tunnelId),
     getActive: () => ipcRenderer.invoke('tunnels:getActive'),
+  },
+
+  // Crypto / Master Password
+  crypto: {
+    hasMasterPassword: () => ipcRenderer.invoke('crypto:hasMasterPassword'),
+    setMasterPassword: (password: string) => ipcRenderer.invoke('crypto:setMasterPassword', password),
+    verifyMasterPassword: (password: string) => ipcRenderer.invoke('crypto:verifyMasterPassword', password),
+    removeMasterPassword: (currentPassword: string) => ipcRenderer.invoke('crypto:removeMasterPassword', currentPassword),
+    isUnlocked: () => ipcRenderer.invoke('crypto:isUnlocked'),
   },
 
   // Settings

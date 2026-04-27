@@ -6,6 +6,7 @@ import {
 import { useSessionStore, useAppStore, useTerminalStore } from '../../store';
 import { SessionEditor } from './SessionEditor';
 import type { SSHSession } from '../../types';
+import { useI18n } from '../../i18n/useI18n';
 
 export function SessionListView() {
   const {
@@ -21,6 +22,7 @@ export function SessionListView() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [newGroupName, setNewGroupName] = useState('');
   const [showNewGroup, setShowNewGroup] = useState(false);
+  const { t } = useI18n();
 
   const filteredSessions = useSessionStore((s) => s.getFilteredSessions());
 
@@ -70,7 +72,7 @@ export function SessionListView() {
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-        <h2 className="text-lg font-semibold text-text-primary">Sessions</h2>
+        <h2 className="text-lg font-semibold text-text-primary">{t('sessions.title')}</h2>
         <div className="flex items-center gap-2">
           <button onClick={() => importSessions()} className="btn-ghost" title="Import">
             <Upload size={16} />
@@ -83,7 +85,7 @@ export function SessionListView() {
           </button>
           <button onClick={() => setIsCreating(true)} className="btn-primary flex items-center gap-1">
             <Plus size={16} />
-            New Session
+            {t('sessions.newSession')}
           </button>
         </div>
       </div>
@@ -94,7 +96,7 @@ export function SessionListView() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
           <input
             type="text"
-            placeholder="Search sessions..."
+            placeholder={t('sessions.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="input-field pl-9"
@@ -110,7 +112,7 @@ export function SessionListView() {
             !selectedGroupId ? 'bg-accent text-white' : 'bg-surface-raised text-text-secondary hover:text-text-primary'
           }`}
         >
-          All
+          {t('sessions.allGroups')}
         </button>
         {groups.map((g) => (
           <button

@@ -24,6 +24,8 @@ interface SessionStore {
   setSelectedGroupId: (id: string | null) => void;
   setEditingSession: (session: SSHSession | null) => void;
   getFilteredSessions: () => SSHSession[];
+  clearRecentSession: (id: string) => Promise<void>;
+  clearAllRecent: () => Promise<void>;
   exportSessions: () => Promise<boolean>;
   importSessions: () => Promise<boolean>;
 }
@@ -115,6 +117,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       );
     }
     return filtered;
+  },
+
+  clearRecentSession: async (id) => {
+    await api.sessions.clearLastConnected(id);
+    await get().loadRecent();
+  },
+
+  clearAllRecent: async () => {
+    await api.sessions.clearAllRecent();
+    await get().loadRecent();
   },
 
   exportSessions: async () => api.sessions.export() as Promise<boolean>,
