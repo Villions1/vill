@@ -121,6 +121,7 @@ export class DatabaseService {
       terminalBellSound: 'false',
       enableBroadcastMode: 'false',
       masterPassword: '',
+      language: 'ru',
     };
     const insert = this.db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
     for (const [key, value] of Object.entries(defaultSettings)) {
@@ -220,6 +221,14 @@ export class DatabaseService {
 
   updateLastConnected(id: string) {
     this.db.prepare("UPDATE sessions SET lastConnectedAt = datetime('now') WHERE id = ?").run(id);
+  }
+
+  clearLastConnected(id: string) {
+    this.db.prepare('UPDATE sessions SET lastConnectedAt = NULL WHERE id = ?').run(id);
+  }
+
+  clearAllRecent() {
+    this.db.prepare('UPDATE sessions SET lastConnectedAt = NULL').run();
   }
 
   // Groups

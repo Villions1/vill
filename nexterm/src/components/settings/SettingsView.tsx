@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { Palette, Terminal, Shield, Info } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Palette, Terminal, Shield, Info, Eye, EyeOff } from 'lucide-react';
 import { useSettingsStore } from '../../store';
+import { api } from '../../lib/api';
+import { useI18n } from '../../i18n/useI18n';
 
 const ACCENT_COLORS = [
   '#4A90D9', '#5A9EE5', '#57ab5a', '#c69026', '#986ee2',
@@ -10,18 +12,19 @@ const ACCENT_COLORS = [
 export function SettingsView() {
   const { settings, updateSettings } = useSettingsStore();
   const [activeTab, setActiveTab] = useState<'appearance' | 'terminal' | 'security' | 'about'>('appearance');
+  const { t } = useI18n();
 
   const tabs = [
-    { id: 'appearance' as const, label: 'Appearance', icon: <Palette size={16} /> },
-    { id: 'terminal' as const, label: 'Terminal', icon: <Terminal size={16} /> },
-    { id: 'security' as const, label: 'Security', icon: <Shield size={16} /> },
-    { id: 'about' as const, label: 'About', icon: <Info size={16} /> },
+    { id: 'appearance' as const, label: t('settings.appearance'), icon: <Palette size={16} /> },
+    { id: 'terminal' as const, label: t('settings.terminal'), icon: <Terminal size={16} /> },
+    { id: 'security' as const, label: t('settings.security'), icon: <Shield size={16} /> },
+    { id: 'about' as const, label: t('settings.about'), icon: <Info size={16} /> },
   ];
 
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b border-sidebar-border">
-        <h2 className="text-lg font-semibold text-text-primary">Settings</h2>
+        <h2 className="text-lg font-semibold text-text-primary">{t('settings.title')}</h2>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -43,7 +46,7 @@ export function SettingsView() {
         <div className="flex-1 overflow-auto p-6 space-y-6">
           {activeTab === 'appearance' && (
             <>
-              <SettingSection title="Theme">
+              <SettingSection title={t('settings.theme')}>
                 <div className="flex gap-3">
                   <button
                     onClick={() => updateSettings({ theme: 'dark' })}
@@ -57,7 +60,7 @@ export function SettingsView() {
                       <div className="w-8 h-full rounded bg-[#22262e]" />
                       <div className="flex-1 h-full rounded bg-[#1e2128]" />
                     </div>
-                    <span className="text-sm font-medium">Dark</span>
+                    <span className="text-sm font-medium">{t('settings.dark')}</span>
                   </button>
                   <button
                     onClick={() => updateSettings({ theme: 'light' })}
@@ -71,12 +74,12 @@ export function SettingsView() {
                       <div className="w-8 h-full rounded bg-[#e8e9ec]" />
                       <div className="flex-1 h-full rounded bg-white" />
                     </div>
-                    <span className="text-sm font-medium">Light</span>
+                    <span className="text-sm font-medium">{t('settings.light')}</span>
                   </button>
                 </div>
               </SettingSection>
 
-              <SettingSection title="Accent Color">
+              <SettingSection title={t('settings.accentColor')}>
                 <div className="flex gap-3">
                   {ACCENT_COLORS.map((color) => (
                     <button
@@ -90,15 +93,26 @@ export function SettingsView() {
                   ))}
                 </div>
               </SettingSection>
+
+              <SettingSection title={t('settings.language')}>
+                <select
+                  value={settings.language || 'ru'}
+                  onChange={(e) => updateSettings({ language: e.target.value })}
+                  className="select-field w-48"
+                >
+                  <option value="en">English</option>
+                  <option value="ru">Русский</option>
+                </select>
+              </SettingSection>
             </>
           )}
 
           {activeTab === 'terminal' && (
             <>
-              <SettingSection title="Font">
+              <SettingSection title={t('settings.font')}>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm text-text-secondary mb-1">Font Family</label>
+                    <label className="block text-sm text-text-secondary mb-1">{t('settings.fontFamily')}</label>
                     <select
                       value={settings.fontFamily}
                       onChange={(e) => updateSettings({ fontFamily: e.target.value })}
@@ -114,7 +128,7 @@ export function SettingsView() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm text-text-secondary mb-1">Font Size</label>
+                    <label className="block text-sm text-text-secondary mb-1">{t('settings.fontSize')}</label>
                     <input
                       type="number"
                       value={settings.fontSize}
@@ -127,19 +141,19 @@ export function SettingsView() {
                 </div>
               </SettingSection>
 
-              <SettingSection title="Cursor">
+              <SettingSection title={t('settings.cursor')}>
                 <select
                   value={settings.cursorStyle}
                   onChange={(e) => updateSettings({ cursorStyle: e.target.value as 'block' | 'underline' | 'bar' })}
                   className="select-field w-48"
                 >
-                  <option value="block">Block</option>
-                  <option value="underline">Underline</option>
-                  <option value="bar">Bar</option>
+                  <option value="block">{t('common.block')}</option>
+                  <option value="underline">{t('common.underline')}</option>
+                  <option value="bar">{t('common.bar')}</option>
                 </select>
               </SettingSection>
 
-              <SettingSection title="Scrollback Buffer (lines)">
+              <SettingSection title={t('settings.scrollback')}>
                 <input
                   type="number"
                   value={settings.scrollbackLines}
@@ -150,7 +164,7 @@ export function SettingsView() {
                 />
               </SettingSection>
 
-              <SettingSection title="Shell Enhancement">
+              <SettingSection title={t('settings.shellEnhancement')}>
                 <label className="flex items-center gap-2 text-sm text-text-secondary">
                   <input
                     type="checkbox"
@@ -160,15 +174,14 @@ export function SettingsView() {
                     }
                     className="rounded"
                   />
-                  Auto-install Oh My Zsh + Powerlevel10k on first connect
+                  {t('settings.autoZsh')}
                 </label>
                 <p className="text-xs text-text-muted mt-1.5">
-                  When enabled, automatically sets up zsh with Oh My Zsh and Powerlevel10k
-                  theme on remote servers that don&apos;t have it. Requires root or sudo access.
+                  {t('settings.autoZshDesc')}
                 </p>
               </SettingSection>
 
-              <SettingSection title="Terminal Bell Sound">
+              <SettingSection title={t('settings.bellSound')}>
                 <label className="flex items-center gap-2 text-sm text-text-secondary">
                   <input
                     type="checkbox"
@@ -178,49 +191,25 @@ export function SettingsView() {
                     }
                     className="rounded"
                   />
-                  Enable bell sound in terminal
+                  {t('settings.enableBell')}
                 </label>
               </SettingSection>
             </>
           )}
 
           {activeTab === 'security' && (
-            <>
-              <SettingSection title="Master Password">
-                <p className="text-sm text-text-muted mb-3">
-                  Set a master password to encrypt stored credentials. Once set, you'll need to
-                  enter it each time you launch the app.
-                </p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="password"
-                    value={settings.masterPassword}
-                    onChange={(e) => updateSettings({ masterPassword: e.target.value })}
-                    placeholder="Enter master password"
-                    className="input-field w-64"
-                  />
-                  <button
-                    onClick={() => updateSettings({ masterPassword: '' })}
-                    className="btn-ghost text-sm"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </SettingSection>
-            </>
+            <SecuritySettings />
           )}
 
           {activeTab === 'about' && (
-            <SettingSection title="About valkyrieTUN">
+            <SettingSection title={t('about.title')}>
               <div className="space-y-3">
                 <p className="text-sm text-text-primary">
                   <span className="font-semibold">valkyrieTUN</span> — Modern SSH Client for Linux
                 </p>
                 <p className="text-sm text-text-secondary">Version 1.0.0</p>
                 <p className="text-sm text-text-muted">
-                  A production-ready SSH client with terminal emulation, SFTP file management,
-                  key management, scripts, and port forwarding. Built with Electron, React,
-                  and xterm.js.
+                  {t('about.description')}
                 </p>
                 <div className="flex items-center gap-4 pt-2">
                   <span className="badge-blue">Electron</span>
@@ -230,7 +219,7 @@ export function SettingsView() {
                   <span className="badge-blue">SQLite</span>
                 </div>
                 <p className="text-xs text-text-muted pt-4">
-                  No cloud sync. No telemetry. Fully offline. All data stays local.
+                  {t('about.noCloud')}
                 </p>
               </div>
             </SettingSection>
@@ -238,6 +227,127 @@ export function SettingsView() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SecuritySettings() {
+  const [hasPassword, setHasPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const { t } = useI18n();
+
+  useEffect(() => {
+    api.crypto.hasMasterPassword().then((v: boolean) => setHasPassword(v));
+  }, []);
+
+  const handleSetPassword = async () => {
+    setError('');
+    setMessage('');
+    if (newPassword.length < 4) { setError(t('security.minChars')); return; }
+    if (newPassword !== confirmPassword) { setError(t('security.noMatch')); return; }
+    await api.crypto.setMasterPassword(newPassword);
+    setHasPassword(true);
+    setNewPassword('');
+    setConfirmPassword('');
+    setMessage(t('security.setSuccess'));
+  };
+
+  const handleRemovePassword = async () => {
+    setError('');
+    setMessage('');
+    if (!currentPassword.trim()) { setError(t('security.enterCurrent')); return; }
+    const ok = await api.crypto.removeMasterPassword(currentPassword);
+    if (ok) {
+      setHasPassword(false);
+      setCurrentPassword('');
+      setMessage(t('security.removeSuccess'));
+    } else {
+      setError(t('security.wrongPassword'));
+    }
+  };
+
+  return (
+    <>
+      <SettingSection title={t('security.masterPassword')}>
+        <p className="text-sm text-text-muted mb-3">
+          {t('security.masterDesc')}
+        </p>
+
+        {hasPassword ? (
+          <div className="space-y-3">
+            <p className="text-sm text-success font-medium">{t('security.active')}</p>
+            <div className="flex items-center gap-3">
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder={t('security.currentToRemove')}
+                className="input-field w-64"
+              />
+              <button onClick={handleRemovePassword} className="btn-ghost text-sm text-warning">
+                {t('security.remove')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={t('security.newPassword')}
+                  className="input-field w-64 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                >
+                  {showNew ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder={t('security.confirmPassword')}
+                  className="input-field w-64 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted"
+                >
+                  {showConfirm ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <button onClick={handleSetPassword} className="btn-primary text-sm">
+                {t('security.setPassword')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+        {message && <p className="text-sm text-success mt-2">{message}</p>}
+      </SettingSection>
+
+      <SettingSection title={t('security.encryption')}>
+        <p className="text-sm text-text-muted">
+          {t('security.encryptionDesc')}
+        </p>
+      </SettingSection>
+    </>
   );
 }
 

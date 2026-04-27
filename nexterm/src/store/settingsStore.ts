@@ -19,6 +19,7 @@ const defaultSettings: AppSettings = {
   terminalBellSound: 'false',
   enableBroadcastMode: 'false',
   masterPassword: '',
+  language: 'ru',
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
