@@ -70,7 +70,7 @@ export function KeyManagerView() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this key from NexTerm? (The key file on disk will not be removed.)')) return;
+    if (!confirm('Delete this key from valkyrieTUN? (The key file on disk will not be removed.)')) return;
     await api.keys.delete(id);
     await loadKeys();
     await detectKeys();

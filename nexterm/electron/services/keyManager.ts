@@ -23,7 +23,7 @@ export class KeyManagerService {
     const keyDir = path.join(os.homedir(), '.ssh');
     if (!fs.existsSync(keyDir)) fs.mkdirSync(keyDir, { mode: 0o700, recursive: true });
 
-    const keyName = `nexterm_${opts.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}`;
+    const keyName = `vktun_${opts.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}`;
     const keyPath = path.join(keyDir, keyName);
 
     let cmd = `ssh-keygen -t ${opts.type}`;

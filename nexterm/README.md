@@ -1,4 +1,4 @@
-# NexTerm — Modern SSH Client for Linux
+# valkyrieTUN — Modern SSH Client for Linux
 
 <p align="center">
   <strong>A production-ready SSH client with terminal emulation, SFTP file management, key management, scripting, and port forwarding.</strong>
@@ -95,8 +95,8 @@
 sudo pacman -S nodejs npm python gcc make
 
 # Clone and build
-git clone https://github.com/YOUR_USER/nexterm.git
-cd nexterm
+git clone https://github.com/Villions1/vill.git
+cd vill/nexterm
 npm install
 npm run build:linux
 ```
@@ -115,8 +115,8 @@ curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Clone and build
-git clone https://github.com/YOUR_USER/nexterm.git
-cd nexterm
+git clone https://github.com/Villions1/vill.git
+cd vill/nexterm
 npm install
 npm run build:linux
 ```
@@ -128,8 +128,8 @@ npm run build:linux
 sudo dnf install -y nodejs npm python3 gcc-c++ make
 
 # Clone and build
-git clone https://github.com/YOUR_USER/nexterm.git
-cd nexterm
+git clone https://github.com/Villions1/vill.git
+cd vill/nexterm
 npm install
 npm run build:linux
 ```
@@ -156,19 +156,19 @@ npm run lint
 
 ```bash
 # Debian/Ubuntu (.deb)
-sudo dpkg -i release/nexterm_1.0.0_amd64.deb
+sudo dpkg -i release/valkyrie-tun_1.0.0_amd64.deb
 
 # Fedora (.rpm)
-sudo rpm -i release/nexterm-1.0.0.x86_64.rpm
+sudo rpm -i release/valkyrie-tun-1.0.0.x86_64.rpm
 
 # AppImage (any distro)
-chmod +x release/NexTerm-1.0.0.AppImage
-./release/NexTerm-1.0.0.AppImage
+chmod +x release/valkyrieTUN-1.0.0.AppImage
+./release/valkyrieTUN-1.0.0.AppImage
 
 # tar.gz
-tar xzf release/nexterm-1.0.0.tar.gz
-cd nexterm-1.0.0
-./nexterm
+tar xzf release/valkyrie-tun-1.0.0.tar.gz
+cd valkyrie-tun-1.0.0
+./valkyrie-tun
 ```
 
 ---
@@ -231,7 +231,7 @@ Inspired by **Termius**:
 All data is stored **locally** in an SQLite database at:
 
 ```
-~/.config/nexterm/nexterm.db
+~/.config/valkyrie-tun/valkyrie-tun.db
 ```
 
 Tables: `sessions`, `groups`, `keys`, `scripts`, `tunnels`, `settings`.

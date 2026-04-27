@@ -34,6 +34,7 @@ const api = {
   ssh: {
     connect: (sessionId: string, sessionData: unknown) =>
       ipcRenderer.invoke('ssh:connect', sessionId, sessionData),
+    ready: (connId: string) => ipcRenderer.invoke('ssh:ready', connId),
     write: (connId: string, data: string) => ipcRenderer.send('ssh:write', connId, data),
     resize: (connId: string, cols: number, rows: number) =>
       ipcRenderer.send('ssh:resize', connId, cols, rows),
@@ -132,6 +133,6 @@ const api = {
   },
 };
 
-contextBridge.exposeInMainWorld('nexterm', api);
+contextBridge.exposeInMainWorld('valkyrieTUN', api);
 
 export type NexTermAPI = typeof api;

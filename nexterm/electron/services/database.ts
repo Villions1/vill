@@ -6,7 +6,7 @@ export class DatabaseService {
   private db: Database.Database;
 
   constructor(userDataPath: string) {
-    const dbPath = path.join(userDataPath, 'nexterm.db');
+    const dbPath = path.join(userDataPath, 'valkyrie-tun.db');
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
@@ -182,17 +182,30 @@ export class DatabaseService {
   }
 
   updateSession(id: string, session: Record<string, unknown>) {
-    const fields = Object.keys(session)
+    // Sanitize: remove undefined values, stringify arrays/objects for SQLite
+    const sanitized: Record<string, unknown> = { id };
+    for (const [k, v] of Object.entries(session)) {
+      if (k === 'id') continue;
+      if (v === undefined) continue;
+      if (k === 'labels' || k === 'sftpBookmarks') {
+        sanitized[k] = typeof v === 'string' ? v : JSON.stringify(v ?? []);
+      } else if (typeof v === 'boolean') {
+        sanitized[k] = v ? 1 : 0;
+      } else if (Array.isArray(v) || (typeof v === 'object' && v !== null)) {
+        sanitized[k] = JSON.stringify(v);
+      } else {
+        sanitized[k] = v ?? null;
+      }
+    }
+
+    const fields = Object.keys(sanitized)
       .filter((k) => k !== 'id')
       .map((k) => {
         if (k === 'labels' || k === 'sftpBookmarks') return `${k} = json(@${k})`;
         return `${k} = @${k}`;
       });
     if (fields.length === 0) return;
-    const prepared: Record<string, unknown> = { ...session, id };
-    if (session.labels) prepared.labels = JSON.stringify(session.labels);
-    if (session.sftpBookmarks) prepared.sftpBookmarks = JSON.stringify(session.sftpBookmarks);
-    this.db.prepare(`UPDATE sessions SET ${fields.join(', ')}, updatedAt = datetime('now') WHERE id = @id`).run(prepared);
+    this.db.prepare(`UPDATE sessions SET ${fields.join(', ')}, updatedAt = datetime('now') WHERE id = @id`).run(sanitized);
   }
 
   deleteSession(id: string) {

@@ -1,9 +1,9 @@
 {
-  "name": "nexterm",
+  "name": "valkyrie-tun",
   "version": "1.0.0",
-  "description": "Modern SSH client for Linux — terminal, SFTP, key management, tunnels, scripting",
+  "description": "valkyrieTUN — Modern SSH client for Linux: terminal, SFTP, key management, tunnels, scripting",
   "main": "dist-electron/main.js",
-  "author": "NexTerm Contributors",
+  "author": "valkyrieTUN Contributors",
   "license": "MIT",
   "private": true,
   "scripts": {

@@ -22,7 +22,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
 
   const tab = useTerminalStore((s) => s.tabs.find((t) => t.id === tabId));
   const updateTab = useTerminalStore((s) => s.updateTab);
-  const connectTab = useTerminalStore((s) => s.connectTab);
   const sessions = useSessionStore((s) => s.sessions);
   const settings = useSettingsStore((s) => s.settings);
 
@@ -86,7 +85,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
     fitAddonRef.current = fitAddon;
     searchAddonRef.current = searchAddon;
 
-    // Handle resize
     const resizeObserver = new ResizeObserver(() => {
       try {
         fitAddon.fit();
@@ -96,7 +94,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
     });
     resizeObserver.observe(containerRef.current);
 
-    // Keyboard shortcut for search
     term.attachCustomKeyEventHandler((event) => {
       if (event.ctrlKey && event.key === 'f' && event.type === 'keydown') {
         setShowSearch(true);
@@ -129,7 +126,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
     const term = terminalRef.current;
     const session = sessions.find((s) => s.id === tab.sessionId);
 
-    // Check for quick connect data
     const quickData = window.sessionStorage.getItem(`quick-connect-${tabId}`);
     const sessionData = quickData
       ? JSON.parse(quickData)
@@ -159,17 +155,19 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
 
     const doConnect = async () => {
       try {
-        await connectTab(tabId, sessionData);
-        const connId = useTerminalStore.getState().tabs.find((t) => t.id === tabId)?.connectionId;
+        // Connect SSH — main process buffers data until we call ssh:ready
+        const connId = await api.ssh.connect(tab.sessionId, sessionData);
         if (!connId) return;
 
-        // Handle data from SSH
-        const removeData = api.ssh.onData(connId, (data: string) => {
+        // Update tab state with connectionId
+        updateTab(tabId, { connectionId: connId as string, isConnected: true, isConnecting: false });
+
+        // Register listeners BEFORE telling main process to flush buffer
+        const removeData = api.ssh.onData(connId as string, (data: string) => {
           term.write(data);
         });
 
-        // Handle SSH close
-        const removeClose = api.ssh.onClose(connId, () => {
+        const removeClose = api.ssh.onClose(connId as string, () => {
           term.writeln('\r\n\x1b[31mConnection closed\x1b[0m');
           updateTab(tabId, { isConnected: false, connectionId: undefined });
         });
@@ -180,7 +178,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
           if (currentTab?.connectionId) {
             api.ssh.write(currentTab.connectionId, data);
 
-            // Broadcast mode
             if (useTerminalStore.getState().broadcastMode) {
               const otherTabs = useTerminalStore.getState().tabs.filter(
                 (t) => t.id !== tabId && t.isConnected && t.connectionId
@@ -192,7 +189,6 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
           }
         });
 
-        // Handle resize
         const onResizeDisposable = term.onResize(({ cols, rows }) => {
           const currentTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId);
           if (currentTab?.connectionId) {
@@ -203,11 +199,14 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
         // Send initial resize
         if (fitAddonRef.current) {
           fitAddonRef.current.fit();
-          const currentTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId);
-          if (currentTab?.connectionId) {
-            api.ssh.resize(currentTab.connectionId, term.cols, term.rows);
-          }
+          api.ssh.resize(connId as string, term.cols, term.rows);
         }
+
+        // Focus terminal so keyboard input works
+        term.focus();
+
+        // NOW tell main process to flush buffered data and start direct forwarding
+        await api.ssh.ready(connId as string);
 
         // Run post-login script if set
         if (session?.postLoginScript) {
@@ -229,9 +228,11 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
         const message = err instanceof Error ? err.message : 'Connection failed';
         term.writeln(`\r\n\x1b[31mError: ${message}\x1b[0m`);
         setError(message);
+        updateTab(tabId, { isConnecting: false });
       }
     };
 
+    updateTab(tabId, { isConnecting: true });
     doConnect();
 
     return () => {
@@ -298,7 +299,11 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
       )}
 
       {/* Terminal container */}
-      <div ref={containerRef} className="flex-1 min-h-0" />
+      <div
+        ref={containerRef}
+        className="flex-1 min-h-0"
+        onClick={() => terminalRef.current?.focus()}
+      />
     </div>
   );
 }

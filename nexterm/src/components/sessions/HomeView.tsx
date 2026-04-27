@@ -1,21 +1,36 @@
 import { useEffect, useState } from 'react';
-import { Clock, Server, Plus, Search, ArrowRight, Zap } from 'lucide-react';
+import { Clock, Server, Plus, Search, ArrowRight, Zap, KeyRound, Lock, X, FolderPlus } from 'lucide-react';
 import { useSessionStore, useAppStore, useTerminalStore } from '../../store';
-import type { SSHSession } from '../../types';
+import type { SSHSession, SessionGroup } from '../../types';
 
 export function HomeView() {
-  const { recentSessions, loadRecent, sessions } = useSessionStore();
+  const { recentSessions, loadRecent, sessions, groups, loadGroups, createSession, createGroup } = useSessionStore();
   const { setCurrentView } = useAppStore();
   const openTab = useTerminalStore((s) => s.openTab);
   const [quickHost, setQuickHost] = useState('');
 
+  // Quick Connect form state
+  const [showQuickForm, setShowQuickForm] = useState(false);
+  const [parsedUser, setParsedUser] = useState('root');
+  const [parsedHost, setParsedHost] = useState('');
+  const [parsedPort, setParsedPort] = useState(22);
+  const [qcAuthMethod, setQcAuthMethod] = useState<'password' | 'key' | 'agent'>('password');
+  const [qcPassword, setQcPassword] = useState('');
+  const [qcKeyPath, setQcKeyPath] = useState('');
+  const [qcPassphrase, setQcPassphrase] = useState('');
+  const [qcSaveSession, setQcSaveSession] = useState(false);
+  const [qcSessionName, setQcSessionName] = useState('');
+  const [qcGroupId, setQcGroupId] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [showNewGroup, setShowNewGroup] = useState(false);
+
   useEffect(() => {
     loadRecent();
-  }, [loadRecent]);
+    loadGroups();
+  }, [loadRecent, loadGroups]);
 
-  const handleQuickConnect = () => {
+  const parseInput = () => {
     if (!quickHost.trim()) return;
-    // Parse user@host:port format
     let username = 'root';
     let host = quickHost.trim();
     let port = 22;
@@ -31,13 +46,71 @@ export function HomeView() {
       port = parseInt(parts[1]) || 22;
     }
 
-    const tabId = openTab('quick-connect', `${username}@${host}`);
+    setParsedUser(username);
+    setParsedHost(host);
+    setParsedPort(port);
+    setQcSessionName(`${username}@${host}`);
+    setShowQuickForm(true);
+  };
+
+  const handleQuickConnect = async () => {
+    const sessionData: Record<string, unknown> = {
+      host: parsedHost,
+      port: parsedPort,
+      username: parsedUser,
+      authMethod: qcAuthMethod,
+    };
+
+    if (qcAuthMethod === 'password') sessionData.password = qcPassword;
+    if (qcAuthMethod === 'key') {
+      sessionData.privateKeyPath = qcKeyPath;
+      if (qcPassphrase) sessionData.passphrase = qcPassphrase;
+    }
+
+    // Save session if requested
+    if (qcSaveSession && qcSessionName.trim()) {
+      let groupId = qcGroupId;
+      if (showNewGroup && newGroupName.trim()) {
+        groupId = await createGroup({ name: newGroupName.trim() });
+      }
+      await createSession({
+        name: qcSessionName,
+        host: parsedHost,
+        port: parsedPort,
+        username: parsedUser,
+        authMethod: qcAuthMethod,
+        password: qcAuthMethod === 'password' ? qcPassword : undefined,
+        privateKeyPath: qcAuthMethod === 'key' ? qcKeyPath : undefined,
+        passphrase: qcAuthMethod === 'key' ? qcPassphrase : undefined,
+        groupId: groupId || undefined,
+        labels: [],
+        notes: '',
+        keepaliveInterval: 10000,
+        keepaliveCountMax: 3,
+        agentForwarding: false,
+        enableLogging: false,
+        sftpBookmarks: [],
+      } as Partial<SSHSession>);
+    }
+
+    const tabId = openTab('quick-connect', `${parsedUser}@${parsedHost}`);
     setCurrentView('terminal');
-    // Store quick connect data for the terminal to use
     window.sessionStorage.setItem(
       `quick-connect-${tabId}`,
-      JSON.stringify({ host, port, username, authMethod: 'agent' })
+      JSON.stringify(sessionData)
     );
+
+    // Reset form
+    setShowQuickForm(false);
+    setQuickHost('');
+    setQcPassword('');
+    setQcKeyPath('');
+    setQcPassphrase('');
+    setQcSaveSession(false);
+    setQcSessionName('');
+    setQcGroupId('');
+    setNewGroupName('');
+    setShowNewGroup(false);
   };
 
   const connectSession = (session: SSHSession) => {
@@ -50,7 +123,7 @@ export function HomeView() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-semibold text-text-primary">Welcome to NexTerm</h1>
+          <h1 className="text-2xl font-semibold text-text-primary">Welcome to valkyrieTUN</h1>
           <p className="text-sm text-text-secondary mt-1">
             Modern SSH client — connect to your servers securely
           </p>
@@ -62,23 +135,186 @@ export function HomeView() {
             <Zap size={18} className="text-accent" />
             <h2 className="text-sm font-semibold text-text-primary">Quick Connect</h2>
           </div>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
-              <input
-                type="text"
-                placeholder="user@hostname:port  or search saved sessions..."
-                value={quickHost}
-                onChange={(e) => setQuickHost(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleQuickConnect()}
-                className="input-field pl-9"
-              />
+
+          {!showQuickForm ? (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+                <input
+                  type="text"
+                  placeholder="user@hostname:port  (e.g. root@192.168.1.1)"
+                  value={quickHost}
+                  onChange={(e) => setQuickHost(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && parseInput()}
+                  className="input-field pl-9"
+                />
+              </div>
+              <button onClick={parseInput} className="btn-primary flex items-center gap-2">
+                <ArrowRight size={16} />
+                Connect
+              </button>
             </div>
-            <button onClick={handleQuickConnect} className="btn-primary flex items-center gap-2">
-              <ArrowRight size={16} />
-              Connect
-            </button>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Connection info header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-sm text-text-primary">
+                  <Server size={16} className="text-accent" />
+                  <span className="font-mono">{parsedUser}@{parsedHost}:{parsedPort}</span>
+                </div>
+                <button onClick={() => setShowQuickForm(false)} className="btn-ghost p-1">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Auth method */}
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1.5">Authentication</label>
+                <div className="flex gap-2">
+                  {(['password', 'key', 'agent'] as const).map((method) => (
+                    <button
+                      key={method}
+                      onClick={() => setQcAuthMethod(method)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                        qcAuthMethod === method
+                          ? 'border-accent bg-accent/10 text-accent'
+                          : 'border-sidebar-border text-text-secondary hover:border-text-muted'
+                      }`}
+                    >
+                      {method === 'password' && <Lock size={14} />}
+                      {method === 'key' && <KeyRound size={14} />}
+                      {method === 'agent' && <Server size={14} />}
+                      {method === 'password' ? 'Password' : method === 'key' ? 'SSH Key' : 'Agent'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Auth fields */}
+              {qcAuthMethod === 'password' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={qcPassword}
+                    onChange={(e) => setQcPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleQuickConnect()}
+                    placeholder="Enter password..."
+                    className="input-field"
+                    autoFocus
+                  />
+                </div>
+              )}
+
+              {qcAuthMethod === 'key' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Private Key Path</label>
+                    <input
+                      type="text"
+                      value={qcKeyPath}
+                      onChange={(e) => setQcKeyPath(e.target.value)}
+                      placeholder="~/.ssh/id_ed25519"
+                      className="input-field"
+                      autoFocus
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Passphrase (optional)</label>
+                    <input
+                      type="password"
+                      value={qcPassphrase}
+                      onChange={(e) => setQcPassphrase(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Save session option */}
+              <div className="border-t border-sidebar-border pt-3">
+                <label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={qcSaveSession}
+                    onChange={(e) => setQcSaveSession(e.target.checked)}
+                    className="rounded"
+                  />
+                  Save as session
+                </label>
+
+                {qcSaveSession && (
+                  <div className="mt-3 space-y-3 pl-6">
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Session Name</label>
+                      <input
+                        type="text"
+                        value={qcSessionName}
+                        onChange={(e) => setQcSessionName(e.target.value)}
+                        placeholder="My Server"
+                        className="input-field"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Group</label>
+                      <div className="flex gap-2">
+                        {!showNewGroup ? (
+                          <>
+                            <select
+                              value={qcGroupId}
+                              onChange={(e) => setQcGroupId(e.target.value)}
+                              className="select-field flex-1"
+                            >
+                              <option value="">No group</option>
+                              {groups.map((g: SessionGroup) => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => setShowNewGroup(true)}
+                              className="btn-ghost flex items-center gap-1 text-sm"
+                              title="Create new group"
+                            >
+                              <FolderPlus size={14} />
+                              New
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <input
+                              type="text"
+                              value={newGroupName}
+                              onChange={(e) => setNewGroupName(e.target.value)}
+                              placeholder="New group name..."
+                              className="input-field flex-1"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => { setShowNewGroup(false); setNewGroupName(''); }}
+                              className="btn-ghost text-sm"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Connect button */}
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowQuickForm(false)} className="btn-ghost">
+                  Cancel
+                </button>
+                <button onClick={handleQuickConnect} className="btn-primary flex items-center gap-2">
+                  <ArrowRight size={16} />
+                  Connect
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Recent Sessions */}
@@ -137,7 +373,7 @@ export function HomeView() {
             <div className="text-xs text-text-secondary">Add a host</div>
           </button>
           <button onClick={() => setCurrentView('keys')} className="card text-center hover:border-accent/50 transition-colors">
-            <Server size={24} className="mx-auto text-accent mb-2" />
+            <KeyRound size={24} className="mx-auto text-accent mb-2" />
             <div className="text-sm font-medium text-text-primary">Manage Keys</div>
             <div className="text-xs text-text-secondary">SSH keys</div>
           </button>

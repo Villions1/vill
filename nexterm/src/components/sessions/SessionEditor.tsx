@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save } from 'lucide-react';
+import { X, Save, FolderPlus } from 'lucide-react';
 import { useSessionStore } from '../../store';
 import type { SSHSession, SessionGroup } from '../../types';
 
@@ -14,7 +14,9 @@ const COLOR_OPTIONS = [
 ];
 
 export function SessionEditor({ session, onClose }: SessionEditorProps) {
-  const { createSession, updateSession, groups } = useSessionStore();
+  const { createSession, updateSession, groups, createGroup, loadGroups } = useSessionStore();
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
   const [form, setForm] = useState({
     name: '',
     host: '',
@@ -177,16 +179,75 @@ export function SessionEditor({ session, onClose }: SessionEditorProps) {
               />
             </Field>
             <Field label="Group">
-              <select
-                value={form.groupId}
-                onChange={(e) => setForm({ ...form, groupId: e.target.value })}
-                className="select-field"
-              >
-                <option value="">No group</option>
-                {groups.map((g: SessionGroup) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                {!showNewGroup ? (
+                  <>
+                    <select
+                      value={form.groupId}
+                      onChange={(e) => setForm({ ...form, groupId: e.target.value })}
+                      className="select-field flex-1"
+                    >
+                      <option value="">No group</option>
+                      {groups.map((g: SessionGroup) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewGroup(true)}
+                      className="btn-ghost flex items-center gap-1 text-sm flex-shrink-0"
+                      title="Create new group"
+                    >
+                      <FolderPlus size={14} />
+                      New
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      value={newGroupName}
+                      onChange={(e) => setNewGroupName(e.target.value)}
+                      placeholder="New group name..."
+                      className="input-field flex-1"
+                      autoFocus
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter' && newGroupName.trim()) {
+                          const id = await createGroup({ name: newGroupName.trim() });
+                          setForm({ ...form, groupId: id });
+                          setShowNewGroup(false);
+                          setNewGroupName('');
+                        }
+                        if (e.key === 'Escape') {
+                          setShowNewGroup(false);
+                          setNewGroupName('');
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (newGroupName.trim()) {
+                          const id = await createGroup({ name: newGroupName.trim() });
+                          setForm({ ...form, groupId: id });
+                        }
+                        setShowNewGroup(false);
+                        setNewGroupName('');
+                      }}
+                      className="btn-primary text-sm flex-shrink-0"
+                    >
+                      Create
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowNewGroup(false); setNewGroupName(''); }}
+                      className="btn-ghost text-sm flex-shrink-0"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+              </div>
             </Field>
             <Field label="Color Tag">
               <div className="flex gap-2">
@@ -327,7 +388,7 @@ export function SessionEditor({ session, onClose }: SessionEditorProps) {
                   type="text"
                   value={form.logPath}
                   onChange={(e) => setForm({ ...form, logPath: e.target.value })}
-                  placeholder="/var/log/nexterm/session.log"
+                  placeholder="/var/log/valkyrie-tun/session.log"
                   className="input-field"
                 />
               </Field>
