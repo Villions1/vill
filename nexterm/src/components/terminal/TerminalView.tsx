@@ -91,37 +91,62 @@ export function TerminalView() {
         </div>
       </div>
 
-      {/* Terminal area — render all tabs, show/hide via CSS to preserve state */}
+      {/* Terminal area — all tabs always mounted, visibility controlled via CSS */}
       <div className="flex-1 overflow-hidden bg-[#1a1d23] relative">
-        {splitMode === 'none' ? (
-          <>
-            {tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="absolute inset-0"
-                style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
-              >
-                <TerminalPane tabId={tab.id} isActive={tab.id === activeTabId} />
-              </div>
-            ))}
-          </>
-        ) : (
-          <div className={`h-full flex ${splitMode === 'horizontal' ? 'flex-col' : 'flex-row'}`}>
-            <div className="flex-1 min-h-0 min-w-0">
-              <TerminalPane tabId={activeTabId!} />
+        {tabs.map((tab) => {
+          const isActiveTab = tab.id === activeTabId;
+          const secondTabId = tabs.find((t) => t.id !== activeTabId)?.id;
+          const isSecondInSplit = splitMode !== 'none' && tab.id === secondTabId;
+          const isVisible = isActiveTab || isSecondInSplit;
+
+          let style: React.CSSProperties = { display: 'none' };
+
+          if (isVisible) {
+            if (splitMode === 'none') {
+              style = { position: 'absolute', inset: 0 };
+            } else if (splitMode === 'vertical') {
+              style = {
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                width: 'calc(50% - 1px)',
+                ...(isActiveTab ? { left: 0 } : { right: 0 }),
+              };
+            } else {
+              style = {
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                height: 'calc(50% - 1px)',
+                ...(isActiveTab ? { top: 0 } : { bottom: 0 }),
+              };
+            }
+          }
+
+          return (
+            <div key={tab.id} style={style}>
+              <TerminalPane tabId={tab.id} isActive={isActiveTab && isVisible} />
             </div>
-            <div className={`${splitMode === 'horizontal' ? 'h-px' : 'w-px'} bg-sidebar-border`} />
-            <div className="flex-1 min-h-0 min-w-0">
-              {tabs.length > 1 ? (
-                <TerminalPane
-                  tabId={tabs.find((t) => t.id !== activeTabId)?.id || ''}
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center text-text-muted text-sm">
-                  Open another session to use split view
-                </div>
-              )}
-            </div>
+          );
+        })}
+        {splitMode !== 'none' && (
+          <div
+            className={`absolute bg-sidebar-border z-10 ${
+              splitMode === 'vertical'
+                ? 'top-0 bottom-0 left-1/2 w-px'
+                : 'left-0 right-0 top-1/2 h-px'
+            }`}
+          />
+        )}
+        {splitMode !== 'none' && tabs.length < 2 && (
+          <div
+            className="absolute flex items-center justify-center text-text-muted text-sm"
+            style={splitMode === 'vertical'
+              ? { top: 0, bottom: 0, right: 0, width: 'calc(50% - 1px)' }
+              : { left: 0, right: 0, bottom: 0, height: 'calc(50% - 1px)' }
+            }
+          >
+            Open another session to use split view
           </div>
         )}
       </div>
