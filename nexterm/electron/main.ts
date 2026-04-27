@@ -63,6 +63,11 @@ function initServices() {
   }
 }
 
+function safeDb<T>(fn: () => T, fallback: T): T {
+  if (!db) return fallback;
+  try { return fn(); } catch (err) { console.error('DB error:', err); return fallback; }
+}
+
 function registerIPCHandlers() {
   // Window controls
   ipcMain.on('window:minimize', () => mainWindow?.minimize());
@@ -74,19 +79,19 @@ function registerIPCHandlers() {
   ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
 
   // Sessions CRUD
-  ipcMain.handle('sessions:getAll', () => db.getAllSessions());
-  ipcMain.handle('sessions:getById', (_, id: string) => db.getSessionById(id));
-  ipcMain.handle('sessions:create', (_, session) => db.createSession(session));
-  ipcMain.handle('sessions:update', (_, id: string, session) => db.updateSession(id, session));
-  ipcMain.handle('sessions:delete', (_, id: string) => db.deleteSession(id));
-  ipcMain.handle('sessions:getRecent', () => db.getRecentSessions());
-  ipcMain.handle('sessions:updateLastConnected', (_, id: string) => db.updateLastConnected(id));
+  ipcMain.handle('sessions:getAll', () => safeDb(() => db.getAllSessions(), []));
+  ipcMain.handle('sessions:getById', (_, id: string) => safeDb(() => db.getSessionById(id), null));
+  ipcMain.handle('sessions:create', (_, session) => safeDb(() => db.createSession(session), null));
+  ipcMain.handle('sessions:update', (_, id: string, session) => safeDb(() => db.updateSession(id, session), null));
+  ipcMain.handle('sessions:delete', (_, id: string) => safeDb(() => db.deleteSession(id), null));
+  ipcMain.handle('sessions:getRecent', () => safeDb(() => db.getRecentSessions(), []));
+  ipcMain.handle('sessions:updateLastConnected', (_, id: string) => safeDb(() => db.updateLastConnected(id), null));
 
   // Groups CRUD
-  ipcMain.handle('groups:getAll', () => db.getAllGroups());
-  ipcMain.handle('groups:create', (_, group) => db.createGroup(group));
-  ipcMain.handle('groups:update', (_, id: string, group) => db.updateGroup(id, group));
-  ipcMain.handle('groups:delete', (_, id: string) => db.deleteGroup(id));
+  ipcMain.handle('groups:getAll', () => safeDb(() => db.getAllGroups(), []));
+  ipcMain.handle('groups:create', (_, group) => safeDb(() => db.createGroup(group), null));
+  ipcMain.handle('groups:update', (_, id: string, group) => safeDb(() => db.updateGroup(id, group), null));
+  ipcMain.handle('groups:delete', (_, id: string) => safeDb(() => db.deleteGroup(id), null));
 
   // SSH connections
   ipcMain.handle('ssh:connect', async (_, sessionId: string, sessionData) => {
@@ -170,21 +175,21 @@ function registerIPCHandlers() {
   ipcMain.handle('keys:detectLocal', () => keyManager.detectLocalKeys());
 
   // Scripts
-  ipcMain.handle('scripts:getAll', () => db.getAllScripts());
-  ipcMain.handle('scripts:create', (_, script) => db.createScript(script));
-  ipcMain.handle('scripts:update', (_, id: string, script) => db.updateScript(id, script));
-  ipcMain.handle('scripts:delete', (_, id: string) => db.deleteScript(id));
+  ipcMain.handle('scripts:getAll', () => safeDb(() => db.getAllScripts(), []));
+  ipcMain.handle('scripts:create', (_, script) => safeDb(() => db.createScript(script), null));
+  ipcMain.handle('scripts:update', (_, id: string, script) => safeDb(() => db.updateScript(id, script), null));
+  ipcMain.handle('scripts:delete', (_, id: string) => safeDb(() => db.deleteScript(id), null));
   ipcMain.handle('scripts:run', async (_, connId: string, scriptContent: string) => {
     return scriptRunner.run(sshService, connId, scriptContent);
   });
 
   // Tunnels
-  ipcMain.handle('tunnels:getAll', () => db.getAllTunnels());
-  ipcMain.handle('tunnels:create', (_, tunnel) => db.createTunnel(tunnel));
-  ipcMain.handle('tunnels:update', (_, id: string, tunnel) => db.updateTunnel(id, tunnel));
-  ipcMain.handle('tunnels:delete', (_, id: string) => db.deleteTunnel(id));
+  ipcMain.handle('tunnels:getAll', () => safeDb(() => db.getAllTunnels(), []));
+  ipcMain.handle('tunnels:create', (_, tunnel) => safeDb(() => db.createTunnel(tunnel), null));
+  ipcMain.handle('tunnels:update', (_, id: string, tunnel) => safeDb(() => db.updateTunnel(id, tunnel), null));
+  ipcMain.handle('tunnels:delete', (_, id: string) => safeDb(() => db.deleteTunnel(id), null));
   ipcMain.handle('tunnels:start', async (_, tunnelId: string, sessionData) => {
-    const tunnel = db.getTunnelById(tunnelId);
+    const tunnel = safeDb(() => db.getTunnelById(tunnelId), null);
     if (tunnel) return tunnelManager.startTunnel(tunnel as unknown as Parameters<typeof tunnelManager.startTunnel>[0], sessionData);
   });
   ipcMain.handle('tunnels:stop', (_, tunnelId: string) => {
@@ -193,8 +198,8 @@ function registerIPCHandlers() {
   ipcMain.handle('tunnels:getActive', () => tunnelManager.getActiveTunnels());
 
   // Settings
-  ipcMain.handle('settings:get', () => db.getSettings());
-  ipcMain.handle('settings:update', (_, settings) => db.updateSettings(settings));
+  ipcMain.handle('settings:get', () => safeDb(() => db.getSettings(), {}));
+  ipcMain.handle('settings:update', (_, settings) => safeDb(() => db.updateSettings(settings), null));
 
   // Import / export
   ipcMain.handle('sessions:export', async () => {
@@ -204,8 +209,8 @@ function registerIPCHandlers() {
     });
     if (!result.canceled && result.filePath) {
       const fs = await import('fs/promises');
-      const sessions = db.getAllSessions();
-      const groups = db.getAllGroups();
+      const sessions = safeDb(() => db.getAllSessions(), []);
+      const groups = safeDb(() => db.getAllGroups(), []);
       await fs.writeFile(result.filePath, JSON.stringify({ sessions, groups }, null, 2));
       return true;
     }
@@ -221,10 +226,10 @@ function registerIPCHandlers() {
       const raw = await fs.readFile(result.filePaths[0], 'utf-8');
       const data = JSON.parse(raw);
       if (data.sessions) {
-        for (const s of data.sessions) db.createSession(s);
+        for (const s of data.sessions) safeDb(() => db.createSession(s), null);
       }
       if (data.groups) {
-        for (const g of data.groups) db.createGroup(g);
+        for (const g of data.groups) safeDb(() => db.createGroup(g), null);
       }
       return true;
     }
@@ -245,8 +250,17 @@ function registerIPCHandlers() {
   ipcMain.handle('shell:openExternal', (_, url: string) => shell.openExternal(url));
 }
 
+let servicesReady = false;
+
 app.whenReady().then(() => {
-  initServices();
+  try {
+    initServices();
+    servicesReady = true;
+  } catch (err) {
+    console.error('Service initialization failed:', err);
+    console.error('The app will start but database features will be unavailable.');
+    console.error('Run "npm run rebuild" or "npx electron-rebuild -f -w better-sqlite3" to fix.');
+  }
   registerIPCHandlers();
   createWindow();
 
@@ -256,8 +270,10 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  sshService.disconnectAll();
-  sftpService.disconnectAll();
-  tunnelManager.stopAll();
+  if (servicesReady) {
+    sshService.disconnectAll();
+    sftpService.disconnectAll();
+    tunnelManager.stopAll();
+  }
   app.quit();
 });

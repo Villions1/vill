@@ -29,11 +29,13 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
   const [showSearch, setShowSearch] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const connectInitiatedRef = useRef(false);
 
   const initTerminal = useCallback(() => {
     if (!containerRef.current || terminalRef.current) return;
 
     const term = new Terminal({
+      allowProposedApi: true,
       fontFamily: settings.fontFamily || 'JetBrains Mono',
       fontSize: parseInt(settings.fontSize) || 14,
       cursorStyle: (settings.cursorStyle as 'block' | 'underline' | 'bar') || 'block',
@@ -121,6 +123,8 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
   // Connect to SSH
   useEffect(() => {
     if (!tab || !terminalRef.current || tab.isConnected || tab.isConnecting) return;
+    if (connectInitiatedRef.current) return;
+    connectInitiatedRef.current = true;
 
     const term = terminalRef.current;
     const session = sessions.find((s) => s.id === tab.sessionId);
@@ -145,6 +149,7 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
 
     if (!sessionData) {
       term.writeln('\r\n\x1b[31mSession not found\x1b[0m');
+      connectInitiatedRef.current = false;
       return;
     }
 

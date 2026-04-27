@@ -140,12 +140,17 @@ npm run build:linux
 # Start dev server with hot reload
 npm run dev
 
+# If you see "NODE_MODULE_VERSION" mismatch error, rebuild native modules:
+npm run rebuild
+
 # Type check
 npm run typecheck
 
 # Lint
 npm run lint
 ```
+
+> **Note**: `npm install` automatically rebuilds `better-sqlite3` for Electron via the `postinstall` script. If you still see a `NODE_MODULE_VERSION` error, run `npm run rebuild` manually.
 
 ### Install Built Packages
 
