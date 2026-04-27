@@ -14,8 +14,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "postinstall": "npx electron-rebuild -f -w better-sqlite3 -w node-pty",
-    "rebuild": "npx electron-rebuild -f -w better-sqlite3 -w node-pty"
+    "postinstall": "npx electron-rebuild -f -w better-sqlite3,node-pty",
+    "rebuild": "npx electron-rebuild -f -w better-sqlite3,node-pty"
   },
   "dependencies": {
     "@xterm/addon-fit": "^0.10.0",
