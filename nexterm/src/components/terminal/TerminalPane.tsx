@@ -159,6 +159,12 @@ export function TerminalPane({ tabId }: TerminalPaneProps) {
         const connId = await api.ssh.connect(tab.sessionId, sessionData);
         if (!connId) return;
 
+        // Safety: verify terminal ref is still the same instance after async
+        if (terminalRef.current !== term) {
+          api.ssh.disconnect(connId as string);
+          return;
+        }
+
         // Update tab state with connectionId
         updateTab(tabId, { connectionId: connId as string, isConnected: true, isConnecting: false });
 
