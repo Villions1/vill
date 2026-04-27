@@ -100,7 +100,7 @@ function registerIPCHandlers() {
     }, () => {
       mainWindow?.webContents.send(`ssh:close:${connId}`);
     });
-    db.updateLastConnected(sessionId);
+    safeDb(() => db.updateLastConnected(sessionId), null);
     return connId;
   });
   ipcMain.on('ssh:write', (_, connId: string, data: string) => {
