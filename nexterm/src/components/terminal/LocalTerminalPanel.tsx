@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
@@ -82,42 +82,40 @@ export function LocalTerminalPanel({ onClose, width, onWidthChange }: LocalTermi
     fitAddonRef.current = fitAddon;
 
     term.open(containerRef.current);
+    fitAddon.fit();
 
-    requestAnimationFrame(() => {
-      fitAddon.fit();
-      const ptyId = ptyIdRef.current;
-      const cols = term.cols;
-      const rows = term.rows;
+    const ptyId = ptyIdRef.current;
+    const cols = term.cols;
+    const rows = term.rows;
 
-      localPtyApi.spawn(ptyId, cols, rows);
+    localPtyApi.spawn(ptyId, cols, rows);
 
-      const removeData = localPtyApi.onData(ptyId, (data: string) => {
-        if (terminalRef.current) {
-          terminalRef.current.write(data);
-        }
-      });
-
-      const removeExit = localPtyApi.onExit(ptyId, () => {
-        if (terminalRef.current) {
-          terminalRef.current.write('\r\n\x1b[90m[Process exited]\x1b[0m\r\n');
-        }
-      });
-
-      term.onData((data: string) => {
-        localPtyApi.write(ptyId, data);
-      });
-
-      term.onResize(({ cols, rows }) => {
-        localPtyApi.resize(ptyId, cols, rows);
-      });
-
-      cleanupRef.current = () => {
-        removeData();
-        removeExit();
-        localPtyApi.kill(ptyId);
-      };
+    const removeData = localPtyApi.onData(ptyId, (data: string) => {
+      if (terminalRef.current) {
+        terminalRef.current.write(data);
+      }
     });
-  }, [settings]);
+
+    const removeExit = localPtyApi.onExit(ptyId, () => {
+      if (terminalRef.current) {
+        terminalRef.current.write('\r\n\x1b[90m[Process exited]\x1b[0m\r\n');
+      }
+    });
+
+    term.onData((data: string) => {
+      localPtyApi.write(ptyId, data);
+    });
+
+    term.onResize(({ cols, rows }) => {
+      localPtyApi.resize(ptyId, cols, rows);
+    });
+
+    cleanupRef.current = () => {
+      removeData();
+      removeExit();
+      localPtyApi.kill(ptyId);
+    };
+  }, [settings.fontFamily, settings.fontSize, settings.cursorStyle, settings.scrollbackLines]);
 
   useEffect(() => {
     initTerminal();

@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 import { v4 as uuid } from 'uuid';
 
 export class DatabaseService {
@@ -10,6 +11,7 @@ export class DatabaseService {
     this.db = new Database(dbPath);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
+    try { fs.chmodSync(dbPath, 0o600); } catch {}
     this.initTables();
   }
 
