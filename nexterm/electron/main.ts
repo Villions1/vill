@@ -293,7 +293,7 @@ function registerIPCHandlers() {
   ipcMain.handle('fs:listLocal', async (_, dirPath: string) => {
     const resolved = path.resolve(dirPath);
     const home = app.getPath('home');
-    if (!resolved.startsWith(home) && !resolved.startsWith('/tmp')) {
+    if (!resolved.startsWith(home + path.sep) && resolved !== home && !resolved.startsWith('/tmp' + path.sep) && resolved !== '/tmp') {
       throw new Error('Access denied: path outside home directory');
     }
     const fs = await import('fs/promises');
