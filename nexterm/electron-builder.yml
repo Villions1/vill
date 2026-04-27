@@ -1,5 +1,5 @@
-appId: com.nexterm.app
-productName: NexTerm
+appId: com.valkyrie-tun.app
+productName: valkyrieTUN
 directories:
   output: release
   buildResources: resources
@@ -21,11 +21,11 @@ linux:
   category: Network
   icon: resources/icon.png
   desktop:
-    Name: NexTerm
+    Name: valkyrieTUN
     Comment: Modern SSH Client
     Categories: Network;RemoteAccess;
     Keywords: ssh;terminal;sftp;remote;
-  maintainer: NexTerm Contributors
+  maintainer: valkyrieTUN Contributors
 deb:
   depends:
     - libnotify4

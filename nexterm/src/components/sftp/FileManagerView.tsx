@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FolderOpen, Upload, Download, RefreshCw, Home, ChevronRight,
   File, Folder, Trash2, Edit2, FolderPlus, FileCode,
@@ -23,6 +23,8 @@ export function FileManagerView() {
   const [error, setError] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; file: RemoteFile } | null>(null);
   const [editingFile, setEditingFile] = useState<{ path: string; content: string } | null>(null);
+  const [localDragOver, setLocalDragOver] = useState(false);
+  const [remoteDragOver, setRemoteDragOver] = useState(false);
 
   useEffect(() => {
     const loadHome = async () => {
@@ -88,7 +90,7 @@ export function FileManagerView() {
     setLocalPath(path);
   };
 
-  const uploadFile = async (localFilePath: string, remoteDir: string) => {
+  const uploadFile = useCallback(async (localFilePath: string, remoteDir: string) => {
     if (!sftpConnId) return;
     const fileName = localFilePath.split('/').pop() || 'file';
     const remoteDest = `${remoteDir}/${fileName}`;
@@ -125,9 +127,9 @@ export function FileManagerView() {
         )
       );
     }
-  };
+  }, [sftpConnId, remotePath]);
 
-  const downloadFile = async (remoteFilePath: string, localDir: string) => {
+  const downloadFile = useCallback(async (remoteFilePath: string, localDir: string) => {
     if (!sftpConnId) return;
     const fileName = remoteFilePath.split('/').pop() || 'file';
     const localDest = `${localDir}/${fileName}`;
@@ -164,7 +166,7 @@ export function FileManagerView() {
         )
       );
     }
-  };
+  }, [sftpConnId, localPath]);
 
   const handleRemoteContextMenu = (e: React.MouseEvent, file: RemoteFile) => {
     e.preventDefault();
@@ -237,6 +239,76 @@ export function FileManagerView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save file');
     }
+  };
+
+  // Drag & drop handlers for remote pane (drop files from local or OS)
+  const handleRemoteDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRemoteDragOver(true);
+  };
+
+  const handleRemoteDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRemoteDragOver(false);
+  };
+
+  const handleRemoteDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRemoteDragOver(false);
+
+    // Handle files dropped from OS file manager
+    if (e.dataTransfer.files.length > 0) {
+      for (const file of Array.from(e.dataTransfer.files)) {
+        const filePath = (file as unknown as { path?: string }).path;
+        if (filePath) {
+          await uploadFile(filePath, remotePath);
+        }
+      }
+      return;
+    }
+
+    // Handle files dragged from local pane
+    const localFilePath = e.dataTransfer.getData('text/local-file-path');
+    if (localFilePath) {
+      await uploadFile(localFilePath, remotePath);
+    }
+  };
+
+  // Drag & drop handlers for local pane (drop files from remote)
+  const handleLocalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocalDragOver(true);
+  };
+
+  const handleLocalDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocalDragOver(false);
+  };
+
+  const handleLocalDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setLocalDragOver(false);
+
+    const remoteFilePath = e.dataTransfer.getData('text/remote-file-path');
+    if (remoteFilePath) {
+      await downloadFile(remoteFilePath, localPath);
+    }
+  };
+
+  const handleLocalFileDragStart = (e: React.DragEvent, file: LocalFile) => {
+    e.dataTransfer.setData('text/local-file-path', file.path);
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  const handleRemoteFileDragStart = (e: React.DragEvent, file: RemoteFile) => {
+    e.dataTransfer.setData('text/remote-file-path', file.path);
+    e.dataTransfer.effectAllowed = 'copy';
   };
 
   const formatSize = (bytes: number) => {
@@ -329,8 +401,15 @@ export function FileManagerView() {
       )}
 
       <div className="flex-1 flex min-h-0">
-        {/* Local pane */}
-        <div className="flex-1 flex flex-col border-r border-sidebar-border min-w-0">
+        {/* Local pane — supports drag & drop */}
+        <div
+          className={`flex-1 flex flex-col border-r border-sidebar-border min-w-0 transition-colors ${
+            localDragOver ? 'bg-accent/5 border-accent/30' : ''
+          }`}
+          onDragOver={handleLocalDragOver}
+          onDragLeave={handleLocalDragLeave}
+          onDrop={handleLocalDrop}
+        >
           <div className="flex items-center gap-2 p-2 border-b border-sidebar-border bg-surface-raised">
             <Home size={14} className="text-text-muted flex-shrink-0" />
             <div className="flex-1 flex items-center gap-1 text-xs text-text-secondary overflow-hidden">
@@ -361,6 +440,8 @@ export function FileManagerView() {
             {localFiles.map((file) => (
               <div
                 key={file.name}
+                draggable={!file.isDirectory}
+                onDragStart={(e) => !file.isDirectory && handleLocalFileDragStart(e, file)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-raised cursor-pointer group"
                 onClick={() => file.isDirectory && navigateLocal(file.path)}
                 onDoubleClick={() => {
@@ -387,14 +468,27 @@ export function FileManagerView() {
                 )}
               </div>
             ))}
+            {localDragOver && (
+              <div className="flex items-center justify-center p-4 m-2 border-2 border-dashed border-accent/40 rounded-lg text-sm text-accent">
+                <Download size={16} className="mr-2" />
+                Drop to download here
+              </div>
+            )}
           </div>
           <div className="px-3 py-1.5 border-t border-sidebar-border text-2xs text-text-muted">
             Local — {localFiles.length} items
           </div>
         </div>
 
-        {/* Remote pane */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Remote pane — supports drag & drop */}
+        <div
+          className={`flex-1 flex flex-col min-w-0 transition-colors ${
+            remoteDragOver ? 'bg-accent/5 border-accent/30' : ''
+          }`}
+          onDragOver={handleRemoteDragOver}
+          onDragLeave={handleRemoteDragLeave}
+          onDrop={handleRemoteDrop}
+        >
           <div className="flex items-center gap-2 p-2 border-b border-sidebar-border bg-surface-raised">
             <FolderOpen size={14} className="text-accent flex-shrink-0" />
             <div className="flex-1 flex items-center gap-1 text-xs text-text-secondary overflow-hidden">
@@ -441,6 +535,8 @@ export function FileManagerView() {
             {remoteFiles.map((file) => (
               <div
                 key={file.name}
+                draggable={!file.isDirectory}
+                onDragStart={(e) => !file.isDirectory && handleRemoteFileDragStart(e, file)}
                 className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-surface-raised cursor-pointer group"
                 onClick={() => file.isDirectory && navigateRemote(file.path)}
                 onDoubleClick={() => {
@@ -474,6 +570,12 @@ export function FileManagerView() {
                 )}
               </div>
             ))}
+            {remoteDragOver && (
+              <div className="flex items-center justify-center p-4 m-2 border-2 border-dashed border-accent/40 rounded-lg text-sm text-accent">
+                <Upload size={16} className="mr-2" />
+                Drop to upload here
+              </div>
+            )}
           </div>
           <div className="px-3 py-1.5 border-t border-sidebar-border text-2xs text-text-muted">
             Remote — {remoteFiles.length} items

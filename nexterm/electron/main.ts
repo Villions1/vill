@@ -93,16 +93,44 @@ function registerIPCHandlers() {
   ipcMain.handle('groups:update', (_, id: string, group) => safeDb(() => db.updateGroup(id, group), null));
   ipcMain.handle('groups:delete', (_, id: string) => safeDb(() => db.deleteGroup(id), null));
 
-  // SSH connections
+  // SSH connections — buffer data until renderer signals ready
+  // Key: connId, Value: { buffer: string[], ready: boolean }
+  const sshState = new Map<string, { buffer: string[]; ready: boolean }>();
+
   ipcMain.handle('ssh:connect', async (_, sessionId: string, sessionData) => {
+    const state = { buffer: [] as string[], ready: false };
+    let resolvedConnId: string | null = null;
+
     const connId = await sshService.connect(sessionData, (data: string) => {
-      mainWindow?.webContents.send(`ssh:data:${connId}`, data);
+      const s = resolvedConnId ? sshState.get(resolvedConnId) : state;
+      if (s && !s.ready) {
+        s.buffer.push(data);
+      } else {
+        mainWindow?.webContents.send(`ssh:data:${resolvedConnId}`, data);
+      }
     }, () => {
-      mainWindow?.webContents.send(`ssh:close:${connId}`);
+      if (resolvedConnId) sshState.delete(resolvedConnId);
+      mainWindow?.webContents.send(`ssh:close:${resolvedConnId}`);
     });
+
+    resolvedConnId = connId;
+    sshState.set(connId, state);
     safeDb(() => db.updateLastConnected(sessionId), null);
     return connId;
   });
+
+  ipcMain.handle('ssh:ready', (_, connId: string) => {
+    const state = sshState.get(connId);
+    if (state) {
+      // Flush buffered data
+      for (const data of state.buffer) {
+        mainWindow?.webContents.send(`ssh:data:${connId}`, data);
+      }
+      state.buffer = [];
+      state.ready = true;
+    }
+  });
+
   ipcMain.on('ssh:write', (_, connId: string, data: string) => {
     sshService.write(connId, data);
   });
@@ -110,6 +138,7 @@ function registerIPCHandlers() {
     sshService.resize(connId, cols, rows);
   });
   ipcMain.handle('ssh:disconnect', (_, connId: string) => {
+    sshState.delete(connId);
     sshService.disconnect(connId);
   });
 
@@ -204,7 +233,7 @@ function registerIPCHandlers() {
   // Import / export
   ipcMain.handle('sessions:export', async () => {
     const result = await dialog.showSaveDialog(mainWindow!, {
-      defaultPath: 'nexterm-sessions.json',
+      defaultPath: 'valkyrie-tun-sessions.json',
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
     if (!result.canceled && result.filePath) {

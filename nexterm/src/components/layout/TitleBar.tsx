@@ -23,7 +23,7 @@ export function TitleBar() {
           <div className="w-3 h-3 rounded-full bg-warning/80" />
           <div className="w-3 h-3 rounded-full bg-success/80" />
         </div>
-        <span className="text-xs text-text-muted ml-2 font-medium">NexTerm</span>
+        <span className="text-xs text-text-muted ml-2 font-medium">valkyrieTUN</span>
       </div>
       <div className="flex items-center titlebar-nodrag">
         <button

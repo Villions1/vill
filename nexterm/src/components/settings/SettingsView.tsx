@@ -192,10 +192,10 @@ export function SettingsView() {
           )}
 
           {activeTab === 'about' && (
-            <SettingSection title="About NexTerm">
+            <SettingSection title="About valkyrieTUN">
               <div className="space-y-3">
                 <p className="text-sm text-text-primary">
-                  <span className="font-semibold">NexTerm</span> — Modern SSH Client for Linux
+                  <span className="font-semibold">valkyrieTUN</span> — Modern SSH Client for Linux
                 </p>
                 <p className="text-sm text-text-secondary">Version 1.0.0</p>
                 <p className="text-sm text-text-muted">
