@@ -104,6 +104,7 @@ export function SettingsView() {
                       onChange={(e) => updateSettings({ fontFamily: e.target.value })}
                       className="select-field"
                     >
+                      <option value="'JetBrainsMono Nerd Font', monospace">JetBrains Mono Nerd (bundled)</option>
                       <option value="JetBrains Mono">JetBrains Mono</option>
                       <option value="Fira Code">Fira Code</option>
                       <option value="Cascadia Code">Cascadia Code</option>
@@ -147,6 +148,24 @@ export function SettingsView() {
                   max={100000}
                   className="input-field w-48"
                 />
+              </SettingSection>
+
+              <SettingSection title="Shell Enhancement">
+                <label className="flex items-center gap-2 text-sm text-text-secondary">
+                  <input
+                    type="checkbox"
+                    checked={settings.autoSetupZsh === 'true'}
+                    onChange={(e) =>
+                      updateSettings({ autoSetupZsh: e.target.checked ? 'true' : 'false' })
+                    }
+                    className="rounded"
+                  />
+                  Auto-install Oh My Zsh + Powerlevel10k on first connect
+                </label>
+                <p className="text-xs text-text-muted mt-1.5">
+                  When enabled, automatically sets up zsh with Oh My Zsh and Powerlevel10k
+                  theme on remote servers that don&apos;t have it. Requires root or sudo access.
+                </p>
               </SettingSection>
 
               <SettingSection title="Terminal Bell Sound">
