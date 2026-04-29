@@ -103,7 +103,7 @@ export function TerminalView() {
 
           if (isVisible) {
             if (splitMode === 'none') {
-              style = { position: 'absolute', inset: 0 };
+              style = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' };
             } else if (splitMode === 'vertical') {
               style = {
                 position: 'absolute',
