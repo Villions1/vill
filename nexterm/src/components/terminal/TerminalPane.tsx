@@ -66,7 +66,6 @@ export function TerminalPane({ tabId, isActive }: TerminalPaneProps) {
         brightWhite: '#ffffff',
       },
       allowTransparency: false,
-      convertEol: true,
     });
 
     const fitAddon = new FitAddon();
@@ -122,16 +121,25 @@ export function TerminalPane({ tabId, isActive }: TerminalPaneProps) {
   // Re-fit terminal when switching back to terminal view or when tab becomes active
   useEffect(() => {
     if (currentView === 'terminal' && fitAddonRef.current && terminalRef.current) {
-      setTimeout(() => {
+      const term = terminalRef.current;
+      const fit = fitAddonRef.current;
+      // Delay to allow CSS layout to settle after visibility change
+      const timer = setTimeout(() => {
         try {
-          fitAddonRef.current?.fit();
-          if (isActive !== false) terminalRef.current?.focus();
+          fit.fit();
+          // Sync remote PTY size after re-fit
+          const currentTab = useTerminalStore.getState().tabs.find((t) => t.id === tabId);
+          if (currentTab?.connectionId) {
+            api.ssh.resize(currentTab.connectionId, term.cols, term.rows);
+          }
+          if (isActive !== false) term.focus();
         } catch {
           // ignore fit errors during transition
         }
       }, 50);
+      return () => clearTimeout(timer);
     }
-  }, [currentView, isActive]);
+  }, [currentView, isActive, tabId]);
 
   // Connect to SSH
   useEffect(() => {
@@ -354,7 +362,7 @@ export function TerminalPane({ tabId, isActive }: TerminalPaneProps) {
       {/* Terminal container */}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0"
+        className="flex-1 min-h-0 overflow-hidden"
         onClick={() => terminalRef.current?.focus()}
       />
     </div>
